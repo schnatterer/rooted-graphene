@@ -1,0 +1,27 @@
+name: Release
+
+on:
+  #schedule:
+  #  - cron:  '0 3 * * *'
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+  # TODO allow for building specific versions
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - run: sudo apt-get install -y jq curl git
+      - name: release
+        env:
+          PASSPHRASE_AVB: ${{ secrets.PASSPHRASE_AVB }}
+          PASSPHRASE_OTA: ${{ secrets.PASSPHRASE_OTA }}
+          KEY_AVB_BASE64: ${{ secrets.KEY_AVB_BASE64 }}
+          CERT_OTA_BASE64: ${{ secrets.CERT_OTA_BASE64 }}
+          KEY_OTA_BASE64: ${{ secrets.KEY_OTA_BASE64 }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPO: ${{ github.repository }}
+        run: DEBUG=1 GRAPHENE_ID=oriole MAGISK_PREINIT_DEVICE='metadata' bash -c '. rooted-graphene.sh && releaseRootedGraphene'
+        # TODO do we expose secrets with debug?
+
