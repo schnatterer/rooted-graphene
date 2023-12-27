@@ -22,6 +22,5 @@ jobs:
           KEY_OTA_BASE64: ${{ secrets.KEY_OTA_BASE64 }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPO: ${{ github.repository }}
-        run: DEBUG=1 GRAPHENE_ID=oriole MAGISK_PREINIT_DEVICE='metadata' bash -c '. rooted-graphene.sh && releaseRootedGraphene'
-        # TODO do we expose secrets with debug?
+        run: DEBUG=1 DEVICE_ID=oriole MAGISK_PREINIT_DEVICE='metadata' bash -c '. rooted-ota.sh && createAndReleaseRootedOta'
 
