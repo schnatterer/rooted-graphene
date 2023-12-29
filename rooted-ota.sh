@@ -27,6 +27,7 @@ OTA_BASE_URL="https://releases.grapheneos.org"
 SKIP_CLEANUP=${SKIP_CLEANUP:-''}
 
 AVB_ROOT_VERSION=2.3.3
+CUSTOTA_VERSION=2.5
 
 set -o nounset -o pipefail -o errexit
 
@@ -58,6 +59,9 @@ function key2base64() {
 function createAndReleaseRootedOta() {
   createRootedOta
   releaseOta
+
+  createOtaServerData
+  uploadOtaServerData
 }
 
 function createRootedOta() {
@@ -76,6 +80,7 @@ function cleanup() {
 }
 
 function checkBuildNecessary() {
+  # TODO switch to ota version only? We can create new assets for devices, magsik or commit with the existing release
   # e.g. 2023121200-v26.4-4647f74-dirty
   POTENTIAL_RELEASE_NAME="$OTA_VERSION-$MAGISK_VERSION-$(git rev-parse --short HEAD)$(createDirtySuffix)"
   POTENTIAL_ASSET_NAME="$OTA_TARGET.zip"
@@ -95,7 +100,8 @@ function checkBuildNecessary() {
   fi
 
   params+=("-H" "Accept: application/vnd.github.v3+json")
-  response=$(curl --fail -s "${params[@]}" "${url}" | \
+  response=$(
+    curl --fail -s "${params[@]}" "${url}" |
       jq --arg release_tag "${POTENTIAL_RELEASE_NAME}" '.[] | select(.tag_name == $release_tag) | {id, tag_name, name, published_at, assets}'
   )
 
@@ -114,6 +120,7 @@ function checkBuildNecessary() {
   else
     echo "Release ${POTENTIAL_RELEASE_NAME} does not exist."
   fi
+
 }
 
 function checkMandatoryVariable() {
@@ -236,18 +243,88 @@ function releaseOta() {
               \"tag_name\": \"$POTENTIAL_RELEASE_NAME\",
               \"target_commitish\": \"main\",
               \"name\": \"$POTENTIAL_RELEASE_NAME\",
-              \"body\": \"\"
+              \"body\": \"See [Changelog](https://grapheneos.org/releases#$OTA_VERSION).\"
             }" \
       "https://api.github.com/repos/$GITHUB_REPO/releases")
     RELEASE_ID=$(echo "$response" | jq -r '.id')
   fi
-  # TODO add changelog
-  # Scrape from https://grapheneos.org/releases#2023121200?
+
+  uploadFile ".tmp/$POTENTIAL_ASSET_NAME.patched" "$POTENTIAL_ASSET_NAME" "application/zip"
+}
+
+function uploadFile() {
+  local sourceFileName="$1"
+  local targetFileName="$2"
+  local contentType="$3"
 
   # Note that --data-binary might lead to out of memory
   curl --fail -X POST -H "Authorization: token $GITHUB_TOKEN" \
-    -H "Content-Type: application/zip" \
-    --upload-file ".tmp/$POTENTIAL_ASSET_NAME.patched" \
-    "https://uploads.github.com/repos/$GITHUB_REPO/releases/$RELEASE_ID/assets?name=$POTENTIAL_ASSET_NAME"
-  # URL to asset: https://github.com/$GITHUB_REPO/releases/download/$POTENTIAL_RELEASE_NAME/$POTENTIAL_ASSET_NAME
+    -H "Content-Type: $contentType" \
+    --upload-file "$sourceFileName" \
+    "https://uploads.github.com/repos/$GITHUB_REPO/releases/$RELEASE_ID/assets?name=$targetFileName"
+}
+
+function createOtaServerData() {
+  downloadCusotaTool
+
+  local args=()
+
+  args+=("--input" ".tmp/$OTA_TARGET.zip.patched")
+  args+=("--output" ".tmp/$OTA_TARGET.zip.csig")
+  args+=("--key" "$KEY_OTA")
+  args+=("--cert" "$CERT_OTA")
+
+  # If env vars not set, passphrases will be queried interactively
+  if [ -v PASSPHRASE_OTA ]; then
+    args+=("--passphrase-env-var" "PASSPHRASE_OTA")
+  fi
+
+  .tmp/custota-tool gen-csig "${args[@]}"
+
+  local args=()
+  args+=("--file" ".tmp/$DEVICE_ID.json")
+  # e.g. https://github.com/schnatterer/rooted-graphene/releases/download/2023121200-v26.4-e54c67f/oriole-ota_update-2023121200.zip
+  # Instead of constructing the location we could also parse it from the upload response
+  args+=("--location" "https://github.com/$GITHUB_REPO/releases/download/$POTENTIAL_RELEASE_NAME/$POTENTIAL_ASSET_NAME")
+
+  .tmp/custota-tool gen-update-info "${args[@]}"
+}
+
+function downloadCusotaTool() {
+  mkdir -p .tmp
+  # TODO verify, avbroot as well
+  # https://github.com/chenxiaolong/Custota/releases/download/v2.5/custota-tool-2.5-x86_64-unknown-linux-gnu.zip.sig
+
+  if ! ls ".tmp/custota-tool" >/dev/null 2>&1; then
+    curl --fail -sL "https://github.com/chenxiaolong/Custota/releases/download/v$CUSTOTA_VERSION/custota-tool-$CUSTOTA_VERSION-x86_64-unknown-linux-gnu.zip" >.tmp/custota.zip &&
+      echo N | unzip .tmp/custota.zip -d .tmp &&
+      rm .tmp/custota.zip &&
+      chmod +x .tmp/custota-tool
+  fi
+}
+
+function uploadOtaServerData() {
+  uploadFile ".tmp/$OTA_TARGET.zip.csig" "$OTA_TARGET.zip.csig" "application/octet-stream"
+
+  # update OTA server (github pages)
+  local current_branch current_commit current_author
+  current_branch=$(git rev-parse --abbrev-ref HEAD)
+  current_commit=$(git rev-parse --short HEAD)
+  current_author=$(git log -1 --format="%an <%ae>")
+
+  git checkout gh-pages
+  # TODO update only, if current $DEVICE_ID.json does not contain $OTA_VERSION
+  # We only want OTA updates on new OTA versions, not for each magisk version or commit
+
+  cp ".tmp/$DEVICE_ID.json" $DEVICE_ID.json
+  git add "$DEVICE_ID.json"
+  git config user.name "GitHub Actions" && git config user.email "actions@github.com"
+  git commit \
+    --message "Update device $DEVICE_ID basing on commit $current_commit" \
+    --author="$current_author"
+
+  git push origin gh-pages
+
+  # Switch back to the original branch
+  git checkout "$current_branch"
 }
