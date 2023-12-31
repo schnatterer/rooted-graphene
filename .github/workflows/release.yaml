@@ -5,7 +5,15 @@ on:
   #  - cron:  '0 3 * * *'
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
-  # TODO allow for building specific versions
+    inputs:
+      device-id:
+        description: |
+          Device ID, e.g. 'oriole'. See https://grapheneos.org/releases
+        required: false
+      ota-version:
+        description: |
+          OTA version, e.g. '2023121200', see https://grapheneos.org/releases
+        required: false
 
 jobs:
   build:
@@ -25,5 +33,7 @@ jobs:
           KEY_OTA_BASE64: ${{ secrets.KEY_OTA_BASE64 }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPO: ${{ github.repository }}
-        run: DEBUG=1 DEVICE_ID=oriole MAGISK_PREINIT_DEVICE='metadata' bash -c '. rooted-ota.sh && createAndReleaseRootedOta'
+          DEVICE_ID: ${{ github.event.inputs.device-id || 'oriole' }}
+          OTA_VERSION: ${{ github.event.inputs.ota-version || 'latest' }}
+        run: DEBUG=1 MAGISK_PREINIT_DEVICE='metadata' bash -c '. rooted-ota.sh && createAndReleaseRootedOta'
 

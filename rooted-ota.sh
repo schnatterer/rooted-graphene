@@ -13,21 +13,29 @@ CERT_OTA_BASE64=${CERT_OTA_BASE64:-''}
 # Set these env vars, or else these params will be queries interactively
 # PASSPHRASE_AVB
 # PASSPHRASE_OTA
+
 # Enable debug output only after sensitive vars have been set, to reduce risk of leak
+DEBUG=${DEBUG:-''}
 if [[ -n "${DEBUG}" ]]; then set -x; fi
+
 # Mandatory params
 MAGISK_PREINIT_DEVICE=${MAGISK_PREINIT_DEVICE:-}
 GITHUB_TOKEN=${GITHUB_TOKEN:-''}
 GITHUB_REPO=${GITHUB_REPO:-''}
 DEVICE_ID=${DEVICE_ID:-} # See here for device IDs https://grapheneos.org/releases
 
-OTA_CHANNEL=${OTA_CHANNEL:-stable}
-OTA_BASE_URL="https://releases.grapheneos.org"
+# Optional
+MAGISK_VERSION=${MAGISK_VERSION:-'latest'}
+OTA_VERSION=${OTA_VERSION:-'latest'}
 
 SKIP_CLEANUP=${SKIP_CLEANUP:-''}
 
-AVB_ROOT_VERSION=2.3.3
-CUSTOTA_VERSION=2.5
+OTA_CHANNEL=${OTA_CHANNEL:-stable} # Alternative: 'alpha'
+OTA_BASE_URL="https://releases.grapheneos.org"
+
+# TODO use dependabot or renovate to upgrade these
+AVB_ROOT_VERSION=3.0.0
+CUSTOTA_VERSION=3.0
 
 set -o nounset -o pipefail -o errexit
 
@@ -51,9 +59,10 @@ function generateKeys() {
 }
 
 function key2base64() {
-  export KEY_AVB_BASE64=$(base64 -w0 $KEY_AVB) && echo "KEY_AVB_BASE64=$KEY_AVB_BASE64"
-  export KEY_OTA_BASE64=$(base64 -w0 $KEY_OTA) && echo "KEY_OTA_BASE64=$KEY_OTA_BASE64"
-  export CERT_OTA_BASE64=$(base64 -w0 $CERT_OTA) && echo "CERT_OTA_BASE64=$CERT_OTA_BASE64"
+  KEY_AVB_BASE64=$(base64 -w0 "$KEY_AVB") && echo "KEY_AVB_BASE64=$KEY_AVB_BASE64"
+  KEY_OTA_BASE64=$(base64 -w0 "$KEY_OTA") && echo "KEY_OTA_BASE64=$KEY_OTA_BASE64"
+  CERT_OTA_BASE64=$(base64 -w0 "$CERT_OTA") && echo "CERT_OTA_BASE64=$CERT_OTA_BASE64"
+  export KEY_AVB_BASE64 KEY_OTA_BASE64 CERT_OTA_BASE64
 }
 
 function createAndReleaseRootedOta() {
@@ -76,6 +85,7 @@ function createRootedOta() {
 function cleanup() {
   echo "Cleaning up..."
   rm -rf .tmp
+  unset KEY_AVB_BASE64 KEY_OTA_BASE64 CERT_OTA_BASE64
   echo "Cleanup complete."
 }
 
@@ -87,7 +97,7 @@ function checkBuildNecessary() {
   RELEASE_ID=''
   local response
 
-  if [[ -z $GITHUB_REPO ]]; then echo "Env Var GITHUB_REPO not set, skipping check for existing release" && return; fi
+  if [[ -z "$GITHUB_REPO" ]]; then echo "Env Var GITHUB_REPO not set, skipping check for existing release" && return; fi
 
   checkMandatoryVariable 'GITHUB_REPO'
   echo "Potential release: $POTENTIAL_RELEASE_NAME"
@@ -158,18 +168,22 @@ function downloadAndroidDependencies() {
 function findLatestVersion() {
   checkMandatoryVariable DEVICE_ID
 
-  MAGISK_VERSION=$(curl --fail -sL -I -o /dev/null -w %{url_effective} https://github.com/topjohnwu/Magisk/releases/latest | sed 's/.*\/tag\///;')
+  if [[ "$MAGISK_VERSION" == 'latest' ]]; then
+    MAGISK_VERSION=$(curl --fail -sL -I -o /dev/null -w '%{url_effective}' https://github.com/topjohnwu/Magisk/releases/latest | sed 's/.*\/tag\///;')
+  fi
   echo "Magisk version: $MAGISK_VERSION"
 
   # Search for a new version grapheneos.
   # e.g. https://releases.grapheneos.org/shiba-stable
 
-  OTA_VERSION=$(curl --fail -s "$OTA_BASE_URL/$DEVICE_ID-$OTA_CHANNEL" | head -n1 | awk '{print $1;}')
-  GRAPHENE_TYPE=${GRAPHENE_TYPE:-ota_update} # Other option: factory
+  if [[ "$OTA_VERSION" == 'latest' ]]; then
+    OTA_VERSION=$(curl --fail -s "$OTA_BASE_URL/$DEVICE_ID-$OTA_CHANNEL" | head -n1 | awk '{print $1;}')
+  fi
+  GRAPHENE_TYPE=${GRAPHENE_TYPE:-'ota_update'} # Other option: factory
   OTA_TARGET="$DEVICE_ID-$GRAPHENE_TYPE-$OTA_VERSION"
-  OTA_URL=$OTA_BASE_URL/$OTA_TARGET.zip
+  OTA_URL="$OTA_BASE_URL/$OTA_TARGET.zip"
   # e.g.  shiba-ota_update-2023121200
-  echo "Graphene target: $OTA_TARGET"
+  echo "OTA target: $OTA_TARGET; OTA URL: $OTA_URL"
 }
 
 function downloadAvBroot() {
@@ -293,7 +307,8 @@ function createOtaServerData() {
 function downloadCusotaTool() {
   mkdir -p .tmp
   # TODO verify, avbroot as well
-  # https://github.com/chenxiaolong/Custota/releases/download/v2.5/custota-tool-2.5-x86_64-unknown-linux-gnu.zip.sig
+  # https://github.com/chenxiaolong/Custota/releases/download/v3.0/custota-tool-3.0-x86_64-unknown-linux-gnu.zip.sig
+  # https://github.com/chenxiaolong/Custota/releases/download/v3.0.0/custota-tool-3.0.0-x86_64-unknown-linux-gnu.zip
 
   if ! ls ".tmp/custota-tool" >/dev/null 2>&1; then
     curl --fail -sL "https://github.com/chenxiaolong/Custota/releases/download/v$CUSTOTA_VERSION/custota-tool-$CUSTOTA_VERSION-x86_64-unknown-linux-gnu.zip" >.tmp/custota.zip &&

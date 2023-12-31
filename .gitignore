@@ -4,4 +4,5 @@
 /avb_pkmd.bin
 /avb.key
 /*.zip
+/*.zip.patched
 /.tmp/

@@ -50,7 +50,7 @@ PASSPHRASE_AVB=1 PASSPHRASE_OTA=1 bash -c '. rooted-ota.sh && key2base64 && KEY_
 # Avoid having to download OTA all over again: SKIP_CLEANUP=true or:
 mkdir -p .tmp && ln -s $PWD/shiba-ota_update-2023121200.zip .tmp/shiba-ota_update-2023121200.zip
 
-# Test releasing
+# Test only releasing
   GITHUB_TOKEN=gh... \
 RELEASE_ID='' \
 ASSET_EXISTS=false \
