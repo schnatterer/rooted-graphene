@@ -7,6 +7,10 @@ Script for creating GrapheneOS over the air updates (OTAs) patched with Magisk u
 
 Provides its own OTA server for [Custota](https://github.com/chenxiaolong/Custota) magisk module: https://schnatterer.github.io/rooted-graphene/
 
+## Usage
+
+TODO describe installation of OS and custota.
+
 ## Script
 
 You can use the script in this repo to create your own OTAs and run your own OTA server.

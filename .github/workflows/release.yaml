@@ -7,14 +7,15 @@ on:
   workflow_dispatch:
     inputs:
       device-id:
-        description: |
-          Device ID, e.g. 'oriole'. See https://grapheneos.org/releases
+        description: Device ID
         required: false
       ota-version:
-        description: |
-          OTA version, e.g. '2023121200', see https://grapheneos.org/releases
+        description: OTA version
         required: false
-
+      force-ota-server-upload:
+        description: Force OTA server upload
+        required: false
+        type: boolean
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -35,5 +36,6 @@ jobs:
           GITHUB_REPO: ${{ github.repository }}
           DEVICE_ID: ${{ github.event.inputs.device-id || 'oriole' }}
           OTA_VERSION: ${{ github.event.inputs.ota-version || 'latest' }}
+          FORCE_OTA_SERVER_UPLOAD: ${{ github.event.inputs.force-ota-server-upload || 'false' }}
         run: DEBUG=1 MAGISK_PREINIT_DEVICE='metadata' bash -c '. rooted-ota.sh && createAndReleaseRootedOta'
 

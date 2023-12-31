@@ -29,6 +29,8 @@ MAGISK_VERSION=${MAGISK_VERSION:-'latest'}
 OTA_VERSION=${OTA_VERSION:-'latest'}
 
 SKIP_CLEANUP=${SKIP_CLEANUP:-''}
+# Set asset released by this script to latest version, even when OTA_VERSION already exists for this device
+FORCE_OTA_SERVER_UPLOAD=${FORCE_OTA_SERVER_UPLOAD:-'false'}
 
 OTA_CHANNEL=${OTA_CHANNEL:-stable} # Alternative: 'alpha'
 OTA_BASE_URL="https://releases.grapheneos.org"
@@ -90,10 +92,9 @@ function cleanup() {
 }
 
 function checkBuildNecessary() {
-  # TODO switch to ota version only? We can create new assets for devices, magsik or commit with the existing release
-  # e.g. 2023121200-v26.4-4647f74-dirty
-  POTENTIAL_RELEASE_NAME="$OTA_VERSION-$MAGISK_VERSION-$(git rev-parse --short HEAD)$(createDirtySuffix)"
-  POTENTIAL_ASSET_NAME="$OTA_TARGET.zip"
+  POTENTIAL_RELEASE_NAME="$OTA_VERSION"
+  # e.g. oriole-2023121200-v26.4-4647f74-dirty.zip
+  POTENTIAL_ASSET_NAME="$DEVICE_ID-$OTA_VERSION-$MAGISK_VERSION-$(git rev-parse --short HEAD)$(createDirtySuffix).zip"
   RELEASE_ID=''
   local response
 
@@ -103,7 +104,7 @@ function checkBuildNecessary() {
   echo "Potential release: $POTENTIAL_RELEASE_NAME"
 
   local params=()
-  url="https://api.github.com/repos/${GITHUB_REPO}/releases"
+  local url="https://api.github.com/repos/${GITHUB_REPO}/releases"
 
   if [ -n "${GITHUB_TOKEN}" ]; then
     params+=("-H" "Authorization: token ${GITHUB_TOKEN}")
@@ -121,9 +122,9 @@ function checkBuildNecessary() {
     selected_asset=$(echo "$response" | jq -r --arg assetName "$POTENTIAL_ASSET_NAME" '.assets[] | select(.name == $assetName)')
 
     if [ -n "$selected_asset" ]; then
-      echo "Found asset with name '$POTENTIAL_ASSET_NAME':"
+      printGreen "Asset with name '$POTENTIAL_ASSET_NAME' already exists. Exiting."
       echo "$selected_asset"
-      exit 0
+      exit 0 
     else
       echo "No asset found with name '$POTENTIAL_ASSET_NAME'."
     fi
@@ -138,7 +139,7 @@ function checkMandatoryVariable() {
     local var_value="${!var_name}"
 
     if [[ -z "$var_value" ]]; then
-      echo "Missing mandatory param $var_name"
+      printRed "Missing mandatory param $var_name"
       exit 1
     fi
   done
@@ -263,7 +264,7 @@ function releaseOta() {
     RELEASE_ID=$(echo "$response" | jq -r '.id')
   fi
 
-  uploadFile ".tmp/$POTENTIAL_ASSET_NAME.patched" "$POTENTIAL_ASSET_NAME" "application/zip"
+  uploadFile ".tmp/$OTA_TARGET.zip.patched" "$POTENTIAL_ASSET_NAME" "application/zip"
 }
 
 function uploadFile() {
@@ -308,7 +309,6 @@ function downloadCusotaTool() {
   mkdir -p .tmp
   # TODO verify, avbroot as well
   # https://github.com/chenxiaolong/Custota/releases/download/v3.0/custota-tool-3.0-x86_64-unknown-linux-gnu.zip.sig
-  # https://github.com/chenxiaolong/Custota/releases/download/v3.0.0/custota-tool-3.0.0-x86_64-unknown-linux-gnu.zip
 
   if ! ls ".tmp/custota-tool" >/dev/null 2>&1; then
     curl --fail -sL "https://github.com/chenxiaolong/Custota/releases/download/v$CUSTOTA_VERSION/custota-tool-$CUSTOTA_VERSION-x86_64-unknown-linux-gnu.zip" >.tmp/custota.zip &&
@@ -319,27 +319,40 @@ function downloadCusotaTool() {
 }
 
 function uploadOtaServerData() {
-  uploadFile ".tmp/$OTA_TARGET.zip.csig" "$OTA_TARGET.zip.csig" "application/octet-stream"
+  uploadFile ".tmp/$OTA_TARGET.zip.csig" "$POTENTIAL_ASSET_NAME.csig" "application/octet-stream"
 
-  # update OTA server (github pages)
+  # Update OTA server (github pages)
   local current_branch current_commit current_author
   current_branch=$(git rev-parse --abbrev-ref HEAD)
   current_commit=$(git rev-parse --short HEAD)
   current_author=$(git log -1 --format="%an <%ae>")
 
   git checkout gh-pages
-  # TODO update only, if current $DEVICE_ID.json does not contain $OTA_VERSION
-  # We only want OTA updates on new OTA versions, not for each magisk version or commit
+  
+  # update only, if current $DEVICE_ID.json does not contain $OTA_VERSION
+  # We don't want to trigger users to upgrade on new commits from this repo or new magisk versions
+  # They can manually upgrade by downloading the OTAs from the releases and "adb sideload" them
+  if ! grep -q "$OTA_VERSION" "$DEVICE_ID.json" || [[ "$FORCE_OTA_SERVER_UPLOAD" == 'true' ]]; then
+    cp ".tmp/$DEVICE_ID.json" $DEVICE_ID.json
+    git add "$DEVICE_ID.json"
+    git config user.name "GitHub Actions" && git config user.email "actions@github.com"
+    git commit \
+      --message "Update device $DEVICE_ID basing on commit $current_commit" \
+      --author="$current_author"
+  
+    git push origin gh-pages
+  
+    # Switch back to the original branch
+    git checkout "$current_branch"
+  else
+    printGreen "Skipping update of OTA server, because $OTA_VERSION already in $DEVICE_ID.json and FORCE_OTA_SERVER_UPLOAD is false."
+  fi
+}
 
-  cp ".tmp/$DEVICE_ID.json" $DEVICE_ID.json
-  git add "$DEVICE_ID.json"
-  git config user.name "GitHub Actions" && git config user.email "actions@github.com"
-  git commit \
-    --message "Update device $DEVICE_ID basing on commit $current_commit" \
-    --author="$current_author"
+function printGreen() {
+    echo -e "\e[32m$1\e[0m"
+}
 
-  git push origin gh-pages
-
-  # Switch back to the original branch
-  git checkout "$current_branch"
+function printRed() {
+    echo -e "\e[31m$1\e[0m"
 }
