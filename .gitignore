@@ -1,7 +1,6 @@
 /.idea/
 /ota.key
 /ota.crt
-/avb_pkmd.bin
 /avb.key
 /*.zip
 /*.zip.patched

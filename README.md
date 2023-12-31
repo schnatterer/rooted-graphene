@@ -3,9 +3,21 @@ rooted-graphene
 
 ⚠️ Not tested on a device, yet. Don't use for now.
 
-Script for creating GrapheneOS over the air updates (OTAs) patched with Magisk using [avbroot](https://github.com/chenxiaolong/avbroot).
+GrapheneOS over the air updates (OTAs) patched with Magisk using [avbroot](https://github.com/chenxiaolong/avbroot) allowing for AVB and locked bootloader *and* root access.
+Provides its own OTA server for [Custota](https://github.com/chenxiaolong/Custota) magisk module.
 
-Provides its own OTA server for [Custota](https://github.com/chenxiaolong/Custota) magisk module: https://schnatterer.github.io/rooted-graphene/
+## Usage
+
+* Initial installation of OS:
+  * Follow the steps provided by [avbroot](https://github.com/chenxiaolong/avbroot#initial-setup) using the `avb_pkmd.bin` from this repo.
+  * Make sure the versions of the unpatched version initially installed and the one used here match.
+  * Hint: You might want to start with the version before the latest to try if OTA is working before initializing your device.
+  * [Disable system updater app](https://github.com/chenxiaolong/avbroot#ota-updates).
+* Updates: 
+  * You could either do updates manually using `adb sideload` (see [here](https://github.com/chenxiaolong/avbroot#updates)),
+  * or use the [Custota](https://github.com/chenxiaolong/Custota) magisk module.
+  * To do so, download and install the Custota module in magsik and reboot.
+  * Open Custota and set the OTA server URL to point to this OTA server: https://schnatterer.github.io/rooted-graphene/
 
 ## Script
 

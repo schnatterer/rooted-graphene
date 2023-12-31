@@ -7,14 +7,21 @@ on:
   workflow_dispatch:
     inputs:
       device-id:
-        description: |
-          Device ID, e.g. 'oriole'. See https://grapheneos.org/releases
+        description: Device ID
+        required: false
+      magisk-preinit-device:
+        description: Magisk preinit device
         required: false
       ota-version:
-        description: |
-          OTA version, e.g. '2023121200', see https://grapheneos.org/releases
+        description: OTA version
         required: false
-
+      magisk-version:
+        description: Magisk version
+        required: false
+      force-ota-server-upload:
+        description: Force OTA server upload
+        required: false
+        type: boolean
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -34,6 +41,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPO: ${{ github.repository }}
           DEVICE_ID: ${{ github.event.inputs.device-id || 'oriole' }}
+          MAGISK_PREINIT_DEVICE: ${{ github.event.inputs.magisk-preinit-device || 'metadata' }}
+          MAGISK_VERSION: ${{ github.event.inputs.magisk-version || 'latest' }}
           OTA_VERSION: ${{ github.event.inputs.ota-version || 'latest' }}
-        run: DEBUG=1 MAGISK_PREINIT_DEVICE='metadata' bash -c '. rooted-ota.sh && createAndReleaseRootedOta'
+          FORCE_OTA_SERVER_UPLOAD: ${{ github.event.inputs.force-ota-server-upload || 'false' }}
+        run: DEBUG=1 bash -c '. rooted-ota.sh && createAndReleaseRootedOta'
 
