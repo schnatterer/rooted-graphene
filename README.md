@@ -93,6 +93,7 @@ DEBUG=1 \
 ```shell
 preinit["cheetah"]="persist" # Pixel Pro 7 https://xdaforums.com/t/guide-to-lock-bootloader-while-using-rooted-otaos-magisk-root.4510295/page-5#post-88499289)
 preinit["oriole"]="=metadata" # Pixel 6
+preinit["shiba"]="=sda10" # Pixel 8
 ```
 
 
