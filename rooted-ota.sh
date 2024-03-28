@@ -25,8 +25,13 @@ GITHUB_TOKEN=${GITHUB_TOKEN:-''}
 GITHUB_REPO=${GITHUB_REPO:-''}
 
 # Optional
-MAGISK_VERSION=${MAGISK_VERSION:-'latest'}
+# https://grapheneos.org/releases#stable-channel
 OTA_VERSION=${OTA_VERSION:-'latest'}
+# It's recommended to pin magisk version in combination with AVB_ROOT_VERSION.
+# Breaking changes in magisk might need to be adapted in new avbroot version
+# Find latest magisk version here: https://github.com/topjohnwu/Magisk/releases, or:
+# curl --fail -sL -I -o /dev/null -w '%{url_effective}' https://github.com/topjohnwu/Magisk/releases/latest | sed 's/.*\/tag\///;'
+MAGISK_VERSION=${MAGISK_VERSION:-'v27.0'}
 
 SKIP_CLEANUP=${SKIP_CLEANUP:-''}
 # Set asset released by this script to latest version, even when OTA_VERSION already exists for this device
