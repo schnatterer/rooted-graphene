@@ -136,7 +136,6 @@ function checkBuildNecessary() {
   else
     echo "Release ${POTENTIAL_RELEASE_NAME} does not exist."
   fi
-
 }
 
 function checkMandatoryVariable() {
@@ -162,7 +161,7 @@ function downloadAndroidDependencies() {
   checkMandatoryVariable 'MAGISK_VERSION' 'OTA_TARGET'
 
   mkdir -p .tmp
-  if ! ls ".tmp/magisk-$MAGISK_VERSION.apk" >/dev/null 2>&1; then
+  if ! ls ".tmp/magisk-$MAGISK_VERSION.apk" >/dev/null 2>&1 && [ "$MAGISK_VERSION" != "rootless" ]; then
     curl --fail -Lo ".tmp/magisk-$MAGISK_VERSION.apk" "https://github.com/topjohnwu/Magisk/releases/download/$MAGISK_VERSION/Magisk-$MAGISK_VERSION.apk"
   fi
 
@@ -174,7 +173,7 @@ function downloadAndroidDependencies() {
 function findLatestVersion() {
   checkMandatoryVariable DEVICE_ID
 
-  if [[ "$MAGISK_VERSION" == 'latest' ]]; then
+  if [[ "$MAGISK_VERSION" == 'latest' ]] && [[ "$MAGISK_VERSION" != 'rootless' ]]; then
     MAGISK_VERSION=$(curl --fail -sL -I -o /dev/null -w '%{url_effective}' https://github.com/topjohnwu/Magisk/releases/latest | sed 's/.*\/tag\///;')
   fi
   echo "Magisk version: $MAGISK_VERSION"
@@ -218,9 +217,13 @@ function patchOta() {
   args+=("--key-avb" "$KEY_AVB")
   args+=("--key-ota" "$KEY_OTA")
   args+=("--cert-ota" "$CERT_OTA")
-  args+=("--magisk" ".tmp/magisk-$MAGISK_VERSION.apk")
-  args+=("--magisk-preinit-device" "$MAGISK_PREINIT_DEVICE")
-
+  if [[ "$MAGISK_VERSION" == 'rootless' ]]; then
+    args+=("--rootless")
+  else 
+    args+=("--magisk" ".tmp/magisk-$MAGISK_VERSION.apk")
+    args+=("--magisk-preinit-device" "$MAGISK_PREINIT_DEVICE")
+  fi 
+  
   # If env vars not set, passphrases will be queried interactively
   if [ -v PASSPHRASE_AVB ]; then
     args+=("--pass-avb-env-var" "PASSPHRASE_AVB")
@@ -334,11 +337,17 @@ function uploadOtaServerData() {
 
   git checkout gh-pages
   
+  if [[ "$MAGISK_VERSION" == 'rootless' ]]; then
+    mkdir -p rootless && cd rootless
+  else
+    mkdir -p magisk && cd magisk
+  fi
+  
   # update only, if current $DEVICE_ID.json does not contain $OTA_VERSION
   # We don't want to trigger users to upgrade on new commits from this repo or new magisk versions
   # They can manually upgrade by downloading the OTAs from the releases and "adb sideload" them
   if ! grep -q "$OTA_VERSION" "$DEVICE_ID.json" || [[ "$FORCE_OTA_SERVER_UPLOAD" == 'true' ]]; then
-    cp ".tmp/$DEVICE_ID.json" $DEVICE_ID.json
+    cp "../.tmp/$DEVICE_ID.json" "$DEVICE_ID.json"
     git add "$DEVICE_ID.json"
     git config user.name "GitHub Actions" && git config user.email "actions@github.com"
     git commit \

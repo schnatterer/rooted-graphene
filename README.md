@@ -10,7 +10,7 @@ Provides its own OTA server for [Custota](https://github.com/chenxiaolong/Custot
 
 ### Hints 
 * Make sure the versions of the unpatched version initially installed and the one taken from this repo match.
-* Hint: You might want to start with the version before the latest to try if OTA is working before initializing your device.
+* You might want to start with the version before the latest to try if OTA is working before initializing your device.
 * Don't mix up **factory image** and OTA
 * The following steps are basically the ones described at [avbroot](https://github.com/chenxiaolong/avbroot#initial-setup) using the `avb_pkmd.bin` from this repo.
 
@@ -86,7 +86,7 @@ TLDR:
 * You could either do updates manually using `adb sideload` (see [here](https://github.com/chenxiaolong/avbroot#updates)),
 * or use the [Custota](https://github.com/chenxiaolong/Custota) magisk module.
 * To do so, download and install the Custota module in magsik and reboot.
-* Open Custota and set the OTA server URL to point to this OTA server: https://schnatterer.github.io/rooted-graphene/
+* Open Custota and set the OTA server URL to point to this OTA server:  https://schnatterer.github.io/rooted-graphene/magisk
 
 ## Script
 

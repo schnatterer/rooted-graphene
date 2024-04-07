@@ -49,4 +49,5 @@ jobs:
           KEY_OTA_BASE64: ${{ secrets.KEY_OTA_BASE64 }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPO: ${{ github.repository }}
-        run: DEBUG=1 bash -c '. rooted-ota.sh && createAndReleaseRootedOta'
+        run: |
+          DEBUG=1 bash -c '. rooted-ota.sh && createAndReleaseRootedOta'
