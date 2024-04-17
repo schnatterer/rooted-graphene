@@ -1,7 +1,0 @@
-{
-  "version": 2,
-  "full": {
-    "location_ota": "https://github.com/schnatterer/rooted-graphene/releases/download/2024031400/oriole-2024031400-v27.0-3701f2d.zip",
-    "location_csig": "https://github.com/schnatterer/rooted-graphene/releases/download/2024031400/oriole-2024031400-v27.0-3701f2d.zip.csig"
-  }
-}
