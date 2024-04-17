@@ -119,7 +119,7 @@ See [GitHub action](.github/workflows/release.yaml) for automating this.
 
 ```shell
 GITHUB_TOKEN=gh... \
-GITHUB_REPO=schnatterer/rooted-ota \
+GITHUB_REPO=schnatterer/rooted-graphene \
 DEVICE_ID=oriole \
 MAGISK_PREINIT_DEVICE=metadata \
 bash -c '. rooted-ota.sh && createAndReleaseRootedOta'

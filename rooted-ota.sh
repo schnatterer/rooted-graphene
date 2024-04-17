@@ -20,13 +20,17 @@ if [[ -n "${DEBUG}" ]]; then set -x; fi
 
 # Mandatory params
 DEVICE_ID=${DEVICE_ID:-} # See here for device IDs https://grapheneos.org/releases
-MAGISK_PREINIT_DEVICE=${MAGISK_PREINIT_DEVICE:-}
 GITHUB_TOKEN=${GITHUB_TOKEN:-''}
 GITHUB_REPO=${GITHUB_REPO:-''}
 
 # Optional
+# If you want an OTA patched with magisk, set the preinit for your device
+MAGISK_PREINIT_DEVICE=${MAGISK_PREINIT_DEVICE:-}
+# Skip creation of rootless OTA by setting to "true"
+SKIP_ROOTLESS=${SKIP_ROOTLESS:-'false'}
 # https://grapheneos.org/releases#stable-channel
 OTA_VERSION=${OTA_VERSION:-'latest'}
+
 # It's recommended to pin magisk version in combination with AVB_ROOT_VERSION.
 # Breaking changes in magisk might need to be adapted in new avbroot version
 # Find latest magisk version here: https://github.com/topjohnwu/Magisk/releases, or:
@@ -45,6 +49,8 @@ AVB_ROOT_VERSION=3.1.1
 CUSTOTA_VERSION=4.0
 
 set -o nounset -o pipefail -o errexit
+
+declare -A POTENTIAL_ASSETS
 
 function generateKeys() {
   downloadAvBroot
@@ -86,7 +92,7 @@ function createRootedOta() {
   findLatestVersion
   checkBuildNecessary
   downloadAndroidDependencies
-  patchOta
+  patchOTAs
 }
 
 function cleanup() {
@@ -97,16 +103,25 @@ function cleanup() {
 }
 
 function checkBuildNecessary() {
-  POTENTIAL_RELEASE_NAME="$OTA_VERSION"
-  # e.g. oriole-2023121200-v26.4-4647f74-dirty.zip
-  POTENTIAL_ASSET_NAME="$DEVICE_ID-$OTA_VERSION-$MAGISK_VERSION-$(git rev-parse --short HEAD)$(createDirtySuffix).zip"
+  if [[ -n "$MAGISK_PREINIT_DEVICE" ]]; then 
+    # e.g. oriole-2023121200-magisk-v26.4-4647f74-dirty.zip
+    POTENTIAL_ASSETS['magisk']="$DEVICE_ID-$OTA_VERSION-magisk-$MAGISK_VERSION-$(git rev-parse --short HEAD)$(createDirtySuffix).zip"
+  else 
+    printGreen "MAGISK_PREINIT_DEVICE not set for device, not creating magisk OTA"
+  fi
+  
+  if [[ "$SKIP_ROOTLESS" != 'true' ]]; then
+    POTENTIAL_ASSETS['rootless']="$DEVICE_ID-$OTA_VERSION-rootless-$(git rev-parse --short HEAD)$(createDirtySuffix).zip"
+  else
+    printGreen "SKIP_ROOTLESS set, not creating rootless OTA"
+  fi
+
   RELEASE_ID=''
   local response
 
   if [[ -z "$GITHUB_REPO" ]]; then echo "Env Var GITHUB_REPO not set, skipping check for existing release" && return; fi
 
-  checkMandatoryVariable 'GITHUB_REPO'
-  echo "Potential release: $POTENTIAL_RELEASE_NAME"
+  echo "Potential release: $OTA_VERSION"
 
   local params=()
   local url="https://api.github.com/repos/${GITHUB_REPO}/releases"
@@ -117,24 +132,34 @@ function checkBuildNecessary() {
 
   params+=("-H" "Accept: application/vnd.github.v3+json")
   response=$(
-    curl --fail -s "${params[@]}" "${url}" |
-      jq --arg release_tag "${POTENTIAL_RELEASE_NAME}" '.[] | select(.tag_name == $release_tag) | {id, tag_name, name, published_at, assets}'
+    curl --fail -sL "${params[@]}" "${url}" |
+      jq --arg release_tag "${OTA_VERSION}" '.[] | select(.tag_name == $release_tag) | {id, tag_name, name, published_at, assets}'
   )
 
   if [[ -n ${response} ]]; then
     RELEASE_ID=$(echo "$response" | jq -r '.id')
-    echo "Release ${POTENTIAL_RELEASE_NAME} exists"
-    selected_asset=$(echo "$response" | jq -r --arg assetName "$POTENTIAL_ASSET_NAME" '.assets[] | select(.name == $assetName)')
-
-    if [ -n "$selected_asset" ]; then
-      printGreen "Asset with name '$POTENTIAL_ASSET_NAME' already exists. Exiting."
-      echo "$selected_asset"
-      exit 0 
-    else
-      echo "No asset found with name '$POTENTIAL_ASSET_NAME'."
+    echo "Release ${OTA_VERSION} exists. ID=$RELEASE_ID"
+    
+    for flavor in "${!POTENTIAL_ASSETS[@]}"; do
+      local POTENTIAL_ASSET_NAME="${POTENTIAL_ASSETS[$flavor]}"
+      echo "Checking if asset exists ${POTENTIAL_ASSET_NAME}"
+      
+      selected_asset=$(echo "$response" | jq -r --arg assetName "${POTENTIAL_ASSET_NAME}" '.assets[] | select(.name == $assetName)')
+  
+      if [ -n "$selected_asset" ]; then
+        printGreen "Asset with name '$POTENTIAL_ASSET_NAME' already released. Not creating it."
+        unset "POTENTIAL_ASSETS[$flavor]"
+      else
+        echo "No asset found with name '$POTENTIAL_ASSET_NAME'."
+      fi
+    done
+    
+    if [ "${#POTENTIAL_ASSETS[@]}" -eq 0 ]; then
+      printGreen "All potential assets already exist. Exiting"
+      exit 0
     fi
   else
-    echo "Release ${POTENTIAL_RELEASE_NAME} does not exist."
+    echo "Release ${OTA_VERSION} does not exist."
   fi
 }
 
@@ -161,19 +186,19 @@ function downloadAndroidDependencies() {
   checkMandatoryVariable 'MAGISK_VERSION' 'OTA_TARGET'
 
   mkdir -p .tmp
-  if ! ls ".tmp/magisk-$MAGISK_VERSION.apk" >/dev/null 2>&1 && [ "$MAGISK_VERSION" != "rootless" ]; then
-    curl --fail -Lo ".tmp/magisk-$MAGISK_VERSION.apk" "https://github.com/topjohnwu/Magisk/releases/download/$MAGISK_VERSION/Magisk-$MAGISK_VERSION.apk"
+  if ! ls ".tmp/magisk-$MAGISK_VERSION.apk" >/dev/null 2>&1 && [[ "${POTENTIAL_ASSETS['magisk']+isset}" ]]; then
+    curl --fail -sLo ".tmp/magisk-$MAGISK_VERSION.apk" "https://github.com/topjohnwu/Magisk/releases/download/$MAGISK_VERSION/Magisk-$MAGISK_VERSION.apk"
   fi
 
   if ! ls ".tmp/$OTA_TARGET.zip" >/dev/null 2>&1; then
-    curl --fail -Lo ".tmp/$OTA_TARGET.zip" "$OTA_URL"
+    curl --fail -sLo ".tmp/$OTA_TARGET.zip" "$OTA_URL"
   fi
 }
 
 function findLatestVersion() {
   checkMandatoryVariable DEVICE_ID
 
-  if [[ "$MAGISK_VERSION" == 'latest' ]] && [[ "$MAGISK_VERSION" != 'rootless' ]]; then
+  if [[ "$MAGISK_VERSION" == 'latest' ]]; then
     MAGISK_VERSION=$(curl --fail -sL -I -o /dev/null -w '%{url_effective}' https://github.com/topjohnwu/Magisk/releases/latest | sed 's/.*\/tag\///;')
   fi
   echo "Magisk version: $MAGISK_VERSION"
@@ -182,7 +207,7 @@ function findLatestVersion() {
   # e.g. https://releases.grapheneos.org/shiba-stable
 
   if [[ "$OTA_VERSION" == 'latest' ]]; then
-    OTA_VERSION=$(curl --fail -s "$OTA_BASE_URL/$DEVICE_ID-$OTA_CHANNEL" | head -n1 | awk '{print $1;}')
+    OTA_VERSION=$(curl --fail -sL "$OTA_BASE_URL/$DEVICE_ID-$OTA_CHANNEL" | head -n1 | awk '{print $1;}')
   fi
   GRAPHENE_TYPE=${GRAPHENE_TYPE:-'ota_update'} # Other option: factory
   OTA_TARGET="$DEVICE_ID-$GRAPHENE_TYPE-$OTA_VERSION"
@@ -202,38 +227,43 @@ function downloadAvBroot() {
   fi
 }
 
-function patchOta() {
-  checkMandatoryVariable MAGISK_PREINIT_DEVICE
-
-  if ls ".tmp/$OTA_TARGET.zip.patched" >/dev/null 2>&1; then return; fi
+function patchOTAs() {
 
   downloadAvBroot
   base642key
 
-  local args=()
-
-  args+=("--output" ".tmp/$OTA_TARGET.zip.patched")
-  args+=("--input" ".tmp/$OTA_TARGET.zip")
-  args+=("--key-avb" "$KEY_AVB")
-  args+=("--key-ota" "$KEY_OTA")
-  args+=("--cert-ota" "$CERT_OTA")
-  if [[ "$MAGISK_VERSION" == 'rootless' ]]; then
-    args+=("--rootless")
-  else 
-    args+=("--magisk" ".tmp/magisk-$MAGISK_VERSION.apk")
-    args+=("--magisk-preinit-device" "$MAGISK_PREINIT_DEVICE")
-  fi 
-  
-  # If env vars not set, passphrases will be queried interactively
-  if [ -v PASSPHRASE_AVB ]; then
-    args+=("--pass-avb-env-var" "PASSPHRASE_AVB")
-  fi
-
-  if [ -v PASSPHRASE_OTA ]; then
-    args+=("--pass-ota-env-var" "PASSPHRASE_OTA")
-  fi
-
-  .tmp/avbroot ota patch "${args[@]}"
+  for flavor in "${!POTENTIAL_ASSETS[@]}"; do
+    local targetFile=".tmp/${POTENTIAL_ASSETS[$flavor]}"
+    
+    if ls "$targetFile" >/dev/null 2>&1; then 
+      printGreen "File $targetFile already exists locally, not patching."
+    else
+      local args=()
+      
+      args+=("--output" "$targetFile")
+      args+=("--input" ".tmp/$OTA_TARGET.zip")
+      args+=("--key-avb" "$KEY_AVB")
+      args+=("--key-ota" "$KEY_OTA")
+      args+=("--cert-ota" "$CERT_OTA")
+       if [[ "$flavor" == 'magisk' ]]; then
+         args+=("--magisk" ".tmp/magisk-$MAGISK_VERSION.apk")
+         args+=("--magisk-preinit-device" "$MAGISK_PREINIT_DEVICE")
+       elif [[ "$flavor" == 'rootless' ]]; then
+         args+=("--rootless")
+       fi
+          
+      # If env vars not set, passphrases will be queried interactively
+      if [ -v PASSPHRASE_AVB ]; then
+        args+=("--pass-avb-env-var" "PASSPHRASE_AVB")
+      fi
+    
+      if [ -v PASSPHRASE_OTA ]; then
+        args+=("--pass-ota-env-var" "PASSPHRASE_OTA")
+      fi
+        
+      .tmp/avbroot ota patch "${args[@]}"
+    fi
+  done
 }
 
 function base642key() {
@@ -263,16 +293,19 @@ function releaseOta() {
   if [[ -z "$RELEASE_ID" ]]; then
     response=$(curl --fail -X POST -H "Authorization: token $GITHUB_TOKEN" \
       -d "{
-              \"tag_name\": \"$POTENTIAL_RELEASE_NAME\",
+              \"tag_name\": \"$OTA_VERSION\",
               \"target_commitish\": \"main\",
-              \"name\": \"$POTENTIAL_RELEASE_NAME\",
+              \"name\": \"$OTA_VERSION\",
               \"body\": \"See [Changelog](https://grapheneos.org/releases#$OTA_VERSION).\"
             }" \
       "https://api.github.com/repos/$GITHUB_REPO/releases")
     RELEASE_ID=$(echo "$response" | jq -r '.id')
   fi
 
-  uploadFile ".tmp/$OTA_TARGET.zip.patched" "$POTENTIAL_ASSET_NAME" "application/zip"
+  for flavor in "${!POTENTIAL_ASSETS[@]}"; do
+    local assetName="${POTENTIAL_ASSETS[$flavor]}"
+    uploadFile ".tmp/$assetName" "$assetName" "application/zip"
+  done
 }
 
 function uploadFile() {
@@ -290,27 +323,34 @@ function uploadFile() {
 function createOtaServerData() {
   downloadCusotaTool
 
-  local args=()
-
-  args+=("--input" ".tmp/$OTA_TARGET.zip.patched")
-  args+=("--output" ".tmp/$OTA_TARGET.zip.csig")
-  args+=("--key" "$KEY_OTA")
-  args+=("--cert" "$CERT_OTA")
-
-  # If env vars not set, passphrases will be queried interactively
-  if [ -v PASSPHRASE_OTA ]; then
-    args+=("--passphrase-env-var" "PASSPHRASE_OTA")
-  fi
-
-  .tmp/custota-tool gen-csig "${args[@]}"
-
-  local args=()
-  args+=("--file" ".tmp/$DEVICE_ID.json")
-  # e.g. https://github.com/schnatterer/rooted-graphene/releases/download/2023121200-v26.4-e54c67f/oriole-ota_update-2023121200.zip
-  # Instead of constructing the location we could also parse it from the upload response
-  args+=("--location" "https://github.com/$GITHUB_REPO/releases/download/$POTENTIAL_RELEASE_NAME/$POTENTIAL_ASSET_NAME")
-
-  .tmp/custota-tool gen-update-info "${args[@]}"
+  for flavor in "${!POTENTIAL_ASSETS[@]}"; do
+    local POTENTIAL_ASSET_NAME="${POTENTIAL_ASSETS[$flavor]}"
+    local targetFile=".tmp/${POTENTIAL_ASSET_NAME}"
+    
+    local args=()
+  
+    args+=("--input" "${targetFile}")
+    args+=("--output" "${targetFile}.csig")
+    args+=("--key" "$KEY_OTA")
+    args+=("--cert" "$CERT_OTA")
+  
+    # If env vars not set, passphrases will be queried interactively
+    if [ -v PASSPHRASE_OTA ]; then
+      args+=("--passphrase-env-var" "PASSPHRASE_OTA")
+    fi
+  
+    .tmp/custota-tool gen-csig "${args[@]}"
+  
+    mkdir -p ".tmp/${flavor}"
+    
+    local args=()
+    args+=("--file" ".tmp/${flavor}/${DEVICE_ID}.json")
+    # e.g. https://github.com/schnatterer/rooted-graphene/releases/download/2023121200-v26.4-e54c67f/oriole-ota_update-2023121200.zip
+    # Instead of constructing the location we could also parse it from the upload response
+    args+=("--location" "https://github.com/$GITHUB_REPO/releases/download/$OTA_VERSION/$POTENTIAL_ASSET_NAME")
+  
+    .tmp/custota-tool gen-update-info "${args[@]}"
+  done
 }
 
 function downloadCusotaTool() {
@@ -327,7 +367,6 @@ function downloadCusotaTool() {
 }
 
 function uploadOtaServerData() {
-  uploadFile ".tmp/$OTA_TARGET.zip.csig" "$POTENTIAL_ASSET_NAME.csig" "application/octet-stream"
 
   # Update OTA server (github pages)
   local current_branch current_commit current_author
@@ -337,30 +376,35 @@ function uploadOtaServerData() {
 
   git checkout gh-pages
   
-  if [[ "$MAGISK_VERSION" == 'rootless' ]]; then
-    mkdir -p rootless && cd rootless
-  else
-    mkdir -p magisk && cd magisk
-  fi
+  for flavor in "${!POTENTIAL_ASSETS[@]}"; do
+    local POTENTIAL_ASSET_NAME="${POTENTIAL_ASSETS[$flavor]}"
+
+    uploadFile ".tmp/${POTENTIAL_ASSET_NAME}.csig" "$POTENTIAL_ASSET_NAME.csig" "application/octet-stream"
+    
+    mkdir -p "$flavor"
+    # update only, if current $DEVICE_ID.json does not contain $OTA_VERSION
+    # We don't want to trigger users to upgrade on new commits from this repo or new magisk versions
+    # They can manually upgrade by downloading the OTAs from the releases and "adb sideload" them
+    if ! grep -q "$OTA_VERSION" "$flavor/$DEVICE_ID.json" || [[ "$FORCE_OTA_SERVER_UPLOAD" == 'true' ]]; then
+      cp ".tmp/$flavor/$DEVICE_ID.json" "$flavor/$DEVICE_ID.json"
+      git add "$flavor/$DEVICE_ID.json"
+    else
+      printGreen "Skipping update of OTA server, because $OTA_VERSION already in $flavor/$DEVICE_ID.json and FORCE_OTA_SERVER_UPLOAD is false."
+    fi
+  done
   
-  # update only, if current $DEVICE_ID.json does not contain $OTA_VERSION
-  # We don't want to trigger users to upgrade on new commits from this repo or new magisk versions
-  # They can manually upgrade by downloading the OTAs from the releases and "adb sideload" them
-  if ! grep -q "$OTA_VERSION" "$DEVICE_ID.json" || [[ "$FORCE_OTA_SERVER_UPLOAD" == 'true' ]]; then
-    cp "../.tmp/$DEVICE_ID.json" "$DEVICE_ID.json"
-    git add "$DEVICE_ID.json"
+  if ! git diff-index --quiet HEAD; then
+    # Commit and push only when there are changes
     git config user.name "GitHub Actions" && git config user.email "actions@github.com"
     git commit \
-      --message "Update device $DEVICE_ID basing on commit $current_commit" \
-      --author="$current_author"
+        --message "Update device $DEVICE_ID basing on commit $current_commit" \
+        --author="$current_author"
   
     git push origin gh-pages
-  
-    # Switch back to the original branch
-    git checkout "$current_branch"
-  else
-    printGreen "Skipping update of OTA server, because $OTA_VERSION already in $DEVICE_ID.json and FORCE_OTA_SERVER_UPLOAD is false."
   fi
+
+  # Switch back to the original branch
+  git checkout "$current_branch"
 }
 
 function printGreen() {
