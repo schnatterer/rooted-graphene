@@ -119,7 +119,6 @@ Note that you can update to this flavor to disable root. However, after the upgr
 
 In the future we might find a way to include an updater to the OTA, so rooting will also be possible via custota.
 
-
 ## Script
 
 You can use the script in this repo to create your own OTAs and run your own OTA server.
@@ -143,7 +142,9 @@ For IDs see [grapheneos.org/releases](https://grapheneos.org/releases). For Magi
 
 ### Upload patched OTAs as GH release and provide OTA server via GH pages
 
-See [GitHub action](.github/workflows/release.yaml) for automating this.
+See GitHub actions for automating this:
+* [release single device](.github/workflows/release-single.yaml)
+* [release multiple devices](.github/workflows/release-multiple.yaml) regularly (using cron)
 
 ```shell
 GITHUB_TOKEN=gh... \
@@ -209,11 +210,7 @@ DEBUG=1 \
 
 ## Magisk preinit strings
 
-```shell
-preinit["cheetah"]="persist" # Pixel Pro 7 https://xdaforums.com/t/guide-to-lock-bootloader-while-using-rooted-otaos-magisk-root.4510295/page-5#post-88499289)
-preinit["oriole"]="=metadata" # Pixel 6
-preinit["shiba"]="=sda10" # Pixel 8
-```
+See [release-multiple.yaml](.github/workflows/release-multiple.yaml) for examples.
 
 How to extract:
 

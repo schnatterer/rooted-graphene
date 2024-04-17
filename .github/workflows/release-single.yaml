@@ -1,14 +1,23 @@
-name: Release
+name: Release single device
 
 on:
-  schedule:
-    - cron:  '0 3 * * *'
-
+  workflow_call:
+    inputs:
+      device-id:
+        type: string
+      magisk-preinit-device:
+        type: string
+        default: ''
+  
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
     inputs:
       device-id:
         description: Device ID
+        required: true
+      skip-rootless:
+        description: skip building rootless OTA
+        type: boolean
         required: false
       magisk-preinit-device:
         description: Magisk preinit device
@@ -24,7 +33,7 @@ on:
         required: false
         type: boolean
 jobs:
-  build:
+  build-device:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -33,12 +42,15 @@ jobs:
           fetch-depth: 0
       - name: Trim input
         # Empty means, use version defined in rooted-ota.sh
+        # Note the difference between github.event.inputs (workflow_dispatch) and inputs (workflow_call)
         run: |
+          echo "DEVICE_ID=$(echo '${{ github.event.inputs.device-id || inputs.device-id || 'shiba' }}' | xargs)" >> $GITHUB_ENV
+          echo "MAGISK_PREINIT_DEVICE=$(echo '${{ github.event.inputs.magisk-preinit-device || inputs.magisk-preinit-device || 'sda10' }}' | xargs)" >> $GITHUB_ENV
+          
           echo "MAGISK_VERSION=$(echo '${{ github.event.inputs.magisk-version || '' }}' | xargs)" >> $GITHUB_ENV
           echo "OTA_VERSION=$(echo '${{ github.event.inputs.ota-version || '' }}' | xargs)" >> $GITHUB_ENV
-          echo "MAGISK_PREINIT_DEVICE=$(echo '${{ github.event.inputs.magisk-preinit-device || 'sda10' }}' | xargs)" >> $GITHUB_ENV
-          echo "DEVICE_ID=$(echo '${{ github.event.inputs.device-id || 'shiba' }}' | xargs)" >> $GITHUB_ENV
           echo "FORCE_OTA_SERVER_UPLOAD=$(echo '${{ github.event.inputs.force-ota-server-upload || '' }}' | xargs)" >> $GITHUB_ENV
+          echo "SKIP_ROOTLESS=$(echo '${{ github.event.inputs.skip-rootless || '' }}' | xargs)" >> $GITHUB_ENV
       - run: sudo apt-get install -y jq curl git
       - name: release
         env:
