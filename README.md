@@ -1,8 +1,12 @@
 rooted-graphene
 ===
 
+
 GrapheneOS over the air updates (OTAs) patched with Magisk using [avbroot](https://github.com/chenxiaolong/avbroot) allowing for AVB and locked bootloader *and* root access.
 Provides its own OTA server for [Custota](https://github.com/chenxiaolong/Custota) magisk module.
+
+> ⚠️ OS and root work in general. However, zygisk does not (and [likely never will](https://github.com/topjohnwu/Magisk/pull/7606)) work, leading to magisk being easily discovered by other apps and lots of banking apps not working.  
+KernelSU support is work in progress.
 
 ## Usage
 
