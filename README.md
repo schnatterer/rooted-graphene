@@ -92,6 +92,17 @@ TLDR:
 * To do so, download and install the Custota module in magsik and reboot.
 * Open Custota and set the OTA server URL to point to this OTA server:  https://schnatterer.github.io/rooted-graphene/magisk
 
+## Remove root / rootless
+
+In order to remove root, you can change to the "rootless" flavor.
+
+To do so, set the following URL in custota: https://schnatterer.github.io/rooted-graphene/rootless/
+
+Note that you can update to this flavor to disable root. However, after the upgrade, custota will no longer work. For re-enabling root, you will have to use `adb sideload`.
+
+In the future we might find a way to include an updater to the OTA, so rooting will also be possible via custota.
+
+
 ## Script
 
 You can use the script in this repo to create your own OTAs and run your own OTA server.
