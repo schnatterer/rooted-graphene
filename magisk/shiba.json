@@ -1,7 +1,7 @@
 {
   "version": 2,
   "full": {
-    "location_ota": "https://github.com/schnatterer/rooted-graphene/releases/download/2024040900/shiba-2024040900-v27.0-eb4d2a1.zip",
-    "location_csig": "https://github.com/schnatterer/rooted-graphene/releases/download/2024040900/shiba-2024040900-v27.0-eb4d2a1.zip.csig"
+    "location_ota": "https://github.com/schnatterer/rooted-graphene/releases/download/2024042200/shiba-2024042200-magisk-v27.0-278aec6.zip",
+    "location_csig": "https://github.com/schnatterer/rooted-graphene/releases/download/2024042200/shiba-2024042200-magisk-v27.0-278aec6.zip.csig"
   }
 }
