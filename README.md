@@ -146,6 +146,15 @@ PASSPHRASE_AVB=1 PASSPHRASE_OTA=1 bash -c '. rooted-ota.sh && key2base64 && KEY_
 # Avoid having to download OTA all over again: SKIP_CLEANUP=true or:
 mkdir -p .tmp && ln -s $PWD/shiba-ota_update-2023121200.zip .tmp/shiba-ota_update-2023121200.zip
 
+# Test patching kernelsu
+  export GITHUB_TOKEN=gh... \
+DEVICE_ID=shiba \
+KERNELSU_KMI=android14-5.15 \
+SKIP_ROOTLESS=true \
+SKIP_CLEANUP=true \
+DEBUG=true \
+bash -c '. rooted-ota.sh && createRootedOta'
+
 # Test only releasing
   GITHUB_TOKEN=gh... \
 RELEASE_ID='' \
@@ -175,9 +184,10 @@ DEBUG=1 \
 ## Magisk preinit strings
 
 ```shell
-preinit["cheetah"]="persist" # Pixel Pro 7 https://xdaforums.com/t/guide-to-lock-bootloader-while-using-rooted-otaos-magisk-root.4510295/page-5#post-88499289)
-preinit["oriole"]="=metadata" # Pixel 6
-preinit["shiba"]="=sda10" # Pixel 8
+devices["shiba"]= 'MAGSIK_PREINIT=sda10 KERNELSU_KMI=android14-5.15' # Pixel 8
+devices["oriole"]='MAGSIK_PREINIT=metadata KERNELSU_KMI=android13-5.10' # Pixel 6
+
+# preinit["cheetah"]="persist" # Pixel Pro 7 https://xdaforums.com/t/guide-to-lock-bootloader-while-using-rooted-otaos-magisk-root.4510295/page-5#post-88499289)
 ```
 
 How to extract:
