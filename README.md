@@ -30,14 +30,14 @@ TLDR:
 * Obtain latest `fastboot`
 * Unlock Bootloader:
   Enable usb debugging and execute `adb reboot bootloader`, or
-      >The easiest approach is to reboot the device and begin holding the volume down button until it boots up into the bootloader interface.
+      > The easiest approach is to reboot the device and begin holding the volume down button until it boots up into the bootloader interface.
    ```shell
    fastboot flashing unlock
    ```
 * flash factory image
 
   ```shell
-  tar xvf DEVICE_NAME-factory-VERSION.zip
+  bsdtar xvf DEVICE_NAME-factory-VERSION.zip # tar on windows and mac
   ./flash-all.sh # or .bat on windows
   ````
 * Stop after that and reboot (leave bootloader unlocked)
@@ -52,14 +52,22 @@ TLDR:
         --directory extracted
     ```
 * Flash the partition images that were extracted.  
-  For each partition inside `extracted/`, except for `system`, run:
+  Flash each partition inside `extracted/`, except for `system`.
     ```bash
-    fastboot flash <partition> extracted/<partition>.img
+  cd extracted
+  
+  for img_file in *.img; do
+    partition_name=$(basename "$img_file" .img)
+    if [ "$partition" == "system" ]; then
+        continue
+    fi
+    fastboot flash "$partition_name" "$img_file"
+  done 
     ```
 * Then, reboot into recovery's fastbootd mode and flash `system`:
     ```bash
     fastboot reboot fastboot
-    fastboot flash system extracted/system.img
+    fastboot flash system system.img
     ```
 * Set up the custom AVB public key in the bootloader.
     ```bash
@@ -82,15 +90,24 @@ TLDR:
     fastboot flashing lock
     ```
 * Confirm by pressing volume down and then power. Then reboot.
-* Remember: **Do not uncheck `OEM unlocking`!** 
+* Remember: **Do not uncheck `OEM unlocking`!**  
+  That is, in Graphene's startup wizard, leave this box unticked 👇️
+  <img src="https://github.com/schnatterer/rooted-graphene/assets/1824962/6ef90b46-2070-4d08-80d4-5f4a0e749cbe" width="216" height="480" alt="Screenshot of GrapheneOS recommending to lock">
+
 
 #### Set up OTA updates
 
 * [Disable system updater app](https://github.com/chenxiaolong/avbroot#ota-updates).
-* You could either do updates manually using `adb sideload` (see [here](https://github.com/chenxiaolong/avbroot#updates)),
-* or use the [Custota](https://github.com/chenxiaolong/Custota) magisk module.
-* To do so, download and install the Custota module in magsik and reboot.
-* Open Custota and set the OTA server URL to point to this OTA server:  https://schnatterer.github.io/rooted-graphene/magisk
+* Use the [Custota](https://github.com/chenxiaolong/Custota) magisk module.
+  * To do so, download and install the Custota module in magsik and reboot.
+  * Open Custota and set the OTA server URL to point to this OTA server:  https://schnatterer.github.io/rooted-graphene/magisk
+* Alternatively you could do updates manually via `adb sideload`:
+  * reboot the device and begin holding the volume down button until it boots up into the bootloader interface
+  * using volume buttons, toggle to recovery. Confirm by pressing power button
+  * If the screen is stuck at a `No command` message, press the volume up button once while holding down the power button.
+  * using volume buttons, toggle to `Apply update from ADB`. Confirm by pressing power button
+  * `adb sideload xyz.zip`
+  * See also [here](https://github.com/chenxiaolong/avbroot#updates).
 
 ## Remove root / rootless
 
