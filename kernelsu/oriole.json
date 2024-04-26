@@ -1,0 +1,7 @@
+{
+  "version": 2,
+  "full": {
+    "location_ota": "https://github.com/schnatterer/rooted-graphene/releases/download/2024042100/oriole-2024042100-kernelsu-v0.9.3-201b6dc.zip",
+    "location_csig": "https://github.com/schnatterer/rooted-graphene/releases/download/2024042100/oriole-2024042100-kernelsu-v0.9.3-201b6dc.zip.csig"
+  }
+}
