@@ -13,9 +13,6 @@ on:
       magisk-preinit-device:
         description: Magisk preinit device
         required: false
-      kernelsu-kmi:
-        description: kernelsu KMI for device
-        required: false
       ota-version:
         description: OTA version
         required: false
@@ -40,7 +37,6 @@ jobs:
           echo "MAGISK_VERSION=$(echo '${{ github.event.inputs.magisk-version || '' }}' | xargs)" >> $GITHUB_ENV
           echo "OTA_VERSION=$(echo '${{ github.event.inputs.ota-version || '' }}' | xargs)" >> $GITHUB_ENV
           echo "MAGISK_PREINIT_DEVICE=$(echo '${{ github.event.inputs.magisk-preinit-device || 'sda10' }}' | xargs)" >> $GITHUB_ENV
-          echo "KERNELSU_KMI=$(echo '${{ github.event.inputs.kernelsu-kmi|| '' }}' | xargs)" >> $GITHUB_ENV
           echo "DEVICE_ID=$(echo '${{ github.event.inputs.device-id || 'shiba' }}' | xargs)" >> $GITHUB_ENV
           echo "FORCE_OTA_SERVER_UPLOAD=$(echo '${{ github.event.inputs.force-ota-server-upload || '' }}' | xargs)" >> $GITHUB_ENV
       - run: sudo apt-get install -y jq curl git

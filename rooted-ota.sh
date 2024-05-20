@@ -26,9 +26,6 @@ GITHUB_REPO=${GITHUB_REPO:-''}
 # Optional
 # If you want an OTA patched with magisk, set the preinit for your device
 MAGISK_PREINIT_DEVICE=${MAGISK_PREINIT_DEVICE:-}
-# If you want an OTA patched with kernelsu, set the KMI for your device
-# https://kernelsu.org/guide/installation.html#kmi
-KERNELSU_KMI=${KERNELSU_KMI:-}
 # Skip creation of rootless OTA by setting to "true"
 SKIP_ROOTLESS=${SKIP_ROOTLESS:-'false'}
 # https://grapheneos.org/releases#stable-channel
@@ -39,7 +36,6 @@ OTA_VERSION=${OTA_VERSION:-'latest'}
 # Find latest magisk version here: https://github.com/topjohnwu/Magisk/releases, or:
 # curl --fail -sL -I -o /dev/null -w '%{url_effective}' https://github.com/topjohnwu/Magisk/releases/latest | sed 's/.*\/tag\///;'
 MAGISK_VERSION=${MAGISK_VERSION:-'v27.0'}
-KERNELSU_VERSION=${KERNELSU_VERSION:-'v0.9.3'}
 
 SKIP_CLEANUP=${SKIP_CLEANUP:-''}
 # Set asset released by this script to latest version, even when OTA_VERSION already exists for this device
@@ -112,12 +108,6 @@ function checkBuildNecessary() {
     POTENTIAL_ASSETS['magisk']="$DEVICE_ID-$OTA_VERSION-magisk-$MAGISK_VERSION-$(git rev-parse --short HEAD)$(createDirtySuffix).zip"
   else 
     printGreen "MAGISK_PREINIT_DEVICE not set for device, not creating magisk OTA"
-  fi
-  if [[ -n "$KERNELSU_KMI" ]]; then 
-    # e.g. oriole-2023121200-magisk-v26.4-4647f74-dirty.zip
-    POTENTIAL_ASSETS['kernelsu']="$DEVICE_ID-$OTA_VERSION-kernelsu-$KERNELSU_VERSION-$(git rev-parse --short HEAD)$(createDirtySuffix).zip"
-  else 
-    printGreen "KERNELSU_KMI not set for device, not creating kernelsu OTA"
   fi
   
   if [[ "$SKIP_ROOTLESS" != 'true' ]]; then
@@ -196,36 +186,12 @@ function downloadAndroidDependencies() {
   checkMandatoryVariable 'MAGISK_VERSION' 'OTA_TARGET'
 
   mkdir -p .tmp
-  if ! ls ".tmp/magisk-$MAGISK_VERSION.apk" >/dev/null 2>&1; then
-    if [[ "${POTENTIAL_ASSETS['magisk']+isset}" ]] || [[ "${POTENTIAL_ASSETS['kernelsu']+isset}" ]]; then
-      curl --fail -sLo ".tmp/magisk-$MAGISK_VERSION.apk" "https://github.com/topjohnwu/Magisk/releases/download/$MAGISK_VERSION/Magisk-$MAGISK_VERSION.apk"
-    fi
-  fi
-  
-  if ! ls ".tmp/ksud-$KERNELSU_VERSION.zip" >/dev/null 2>&1 && [[ "${POTENTIAL_ASSETS['kernelsu']+isset}" ]]; then
-    checkMandatoryVariable 'GITHUB_TOKEN'
-    local artifacts_url ksud_artifact_api_url 
-    artifacts_url=$(curl -s --fail -H "Authorization: token $GITHUB_TOKEN" \
-      "https://api.github.com/repos/tiann/KernelSU/actions/runs?event=push&branch=$KERNELSU_VERSION" | jq  -r '.workflow_runs[0].artifacts_url')
-    # Note that this might fail once we exceed 100 artifacts. Then, we would have to implement paging
-    ksud_artifact_api_url=$(curl -s --fail -H "Authorization: token $GITHUB_TOKEN" "$artifacts_url?per_page=100" \
-      | jq -r '.artifacts[] | select(.name == "ksud-x86_64-unknown-linux-musl" )| .archive_download_url')
-     curl --fail -Lo ".tmp/ksud-$KERNELSU_VERSION.zip" -H "Authorization: token $GITHUB_TOKEN" "$ksud_artifact_api_url"
-     # Note that for this authentication is required!
-     # Even this 👇️ returns 404 with curl, works in browser only when logged in
-     # run_id=$(echo $artifacts_url | sed -n 's/.*runs\/\([0-9]*\)\/.*/\1/p')
-     # ksud_artifact_id=$(echo $ksud_artifact_api_url | sed -n 's/.*artifacts\/\([0-9]*\)\/.*/\1/p')
-     # curl --fail -Lo ".tmp/ksud.zip" "https://github.com/tiann/KernelSU/actions/runs/$run_id/artifacts/$ksud_artifact_id"
-     
-     # Extract ksud and libmagiskboot (-j == junk paths, don't recreate archive’s directory structure)
-     unzip -j ".tmp/magisk-$MAGISK_VERSION.apk" 'lib/x86_64/libmagiskboot.so' -d .tmp
-     unzip -j ".tmp/ksud-$KERNELSU_VERSION.zip" 'x86_64-unknown-linux-musl/release/ksud' -d .tmp
-     chmod +x .tmp/ksud .tmp/libmagiskboot.so
+  if ! ls ".tmp/magisk-$MAGISK_VERSION.apk" >/dev/null 2>&1 && [[ "${POTENTIAL_ASSETS['magisk']+isset}" ]]; then
+    curl --fail -sLo ".tmp/magisk-$MAGISK_VERSION.apk" "https://github.com/topjohnwu/Magisk/releases/download/$MAGISK_VERSION/Magisk-$MAGISK_VERSION.apk"
   fi
 
   if ! ls ".tmp/$OTA_TARGET.zip" >/dev/null 2>&1; then
-    printGreen "Downloading $OTA_URL"
-    curl --fail -Lo ".tmp/$OTA_TARGET.zip" "$OTA_URL"
+    curl --fail -sLo ".tmp/$OTA_TARGET.zip" "$OTA_URL"
   fi
 }
 
@@ -279,27 +245,12 @@ function patchOTAs() {
       args+=("--key-avb" "$KEY_AVB")
       args+=("--key-ota" "$KEY_OTA")
       args+=("--cert-ota" "$CERT_OTA")
-      
-      if [[ "$flavor" == 'magisk' ]]; then
-        args+=("--magisk" ".tmp/magisk-$MAGISK_VERSION.apk")
-        args+=("--magisk-preinit-device" "$MAGISK_PREINIT_DEVICE")
-      elif [[ "$flavor" == 'rootless' ]]; then
-        args+=("--rootless")
-      elif [[ "$flavor" == 'kernelsu' ]]; then
-        printGreen "Creating prepatched boot.img for kernelsu, for device $DEVICE_ID using kmi $KERNELSU_KMI"
-        rm -rf .tmp/kernelsu_patched_*.img
-        .tmp/avbroot ota extract \
-            --input ".tmp/$OTA_TARGET.zip" \
-            --directory .tmp \
-            --boot-only
-        # TODO double check boot.img if the KMI version matches? Or does ksud do this? e.g.
-        # $strings .tmp/boot.img | grep 'inux ver'
-        # #inux version 5.15.149-android14-11-gffcffea08746 (
-        .tmp/ksud boot-patch -b .tmp/boot.img --kmi "${KERNELSU_KMI}" --magiskboot .tmp/libmagiskboot.so -o .tmp
-        
-         args+=(--prepatched "$(ls .tmp/kernelsu_patched*.img)")
-      fi
-      
+       if [[ "$flavor" == 'magisk' ]]; then
+         args+=("--magisk" ".tmp/magisk-$MAGISK_VERSION.apk")
+         args+=("--magisk-preinit-device" "$MAGISK_PREINIT_DEVICE")
+       elif [[ "$flavor" == 'rootless' ]]; then
+         args+=("--rootless")
+       fi
           
       # If env vars not set, passphrases will be queried interactively
       if [ -v PASSPHRASE_AVB ]; then

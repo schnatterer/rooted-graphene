@@ -6,7 +6,7 @@ GrapheneOS over the air updates (OTAs) patched with Magisk using [avbroot](https
 Provides its own OTA server for [Custota](https://github.com/chenxiaolong/Custota) magisk module.
 
 > ⚠️ OS and root work in general. However, zygisk does not (and [likely never will](https://github.com/topjohnwu/Magisk/pull/7606)) work, leading to magisk being easily discovered by other apps and lots of banking apps not working.  
-KernelSU support is work in progress.
+ See [bellow](#using-other-rooting-mechanisms) for alternatives.
 
 ## Usage
 
@@ -153,6 +153,24 @@ MAGISK_PREINIT_DEVICE=metadata \
 bash -c '. rooted-ota.sh && createAndReleaseRootedOta'
 ```
 
+### Using other rooting mechanisms
+
+As [magisk does not seem a perfect match for GrapheneOS](https://github.com/topjohnwu/Magisk/pull/7606), you might be looking for alternatives.
+
+I had a first go at [patching kernelsu](https://github.com/schnatterer/rooted-graphene/commit/201b6dc939ab3a202694fa892de6db2840e5c3d6) which booted but did not provide root. 
+There even are some [artifacts](https://github.com/schnatterer/rooted-graphene/releases/tag/2024042100) to try. 
+
+Patching kernelsu is much more complex that patching magisk. 
+It might even be impossible to run GrapheneOS with it, without building GrapheneOS from scratch.
+
+Also, some parts of kernelsu seem to be closed source, which feels suspicious and inappropriate for a tool with so much influence on your device.
+
+Another alternative might be to use a version of magisk (like [the one maintained by pixincreate](https://github.com/pixincreate/Magisk)) that contains patches to make zygisk work.  
+This still has some limitations, like [certain modules checking for magisk's signature won't work](https://github.com/schnatterer/rooted-graphene/commit/da0cd817c2665798df46df1aeb7caef9d98b79d0#r141746606). 
+
+In general, using [magisk and especially zygisk with Graphene seems to have the risk of breaking things with every new release](https://github.com/chenxiaolong/avbroot/issues/213#issuecomment-1986637884).  
+It's good to have the rootless version as a fallback! 
+
 ## Development
 ```bash
 # DEBUG some parts of the script interactively
@@ -162,15 +180,6 @@ PASSPHRASE_AVB=1 PASSPHRASE_OTA=1 bash -c '. rooted-ota.sh && key2base64 && KEY_
 
 # Avoid having to download OTA all over again: SKIP_CLEANUP=true or:
 mkdir -p .tmp && ln -s $PWD/shiba-ota_update-2023121200.zip .tmp/shiba-ota_update-2023121200.zip
-
-# Test patching kernelsu
-  export GITHUB_TOKEN=gh... \
-DEVICE_ID=shiba \
-KERNELSU_KMI=android14-5.15 \
-SKIP_ROOTLESS=true \
-SKIP_CLEANUP=true \
-DEBUG=true \
-bash -c '. rooted-ota.sh && createRootedOta'
 
 # Test only releasing
   GITHUB_TOKEN=gh... \
@@ -201,10 +210,9 @@ DEBUG=1 \
 ## Magisk preinit strings
 
 ```shell
-devices["shiba"]= 'MAGSIK_PREINIT=sda10 KERNELSU_KMI=android14-5.15' # Pixel 8
-devices["oriole"]='MAGSIK_PREINIT=metadata KERNELSU_KMI=android13-5.10' # Pixel 6
-
-# preinit["cheetah"]="persist" # Pixel Pro 7 https://xdaforums.com/t/guide-to-lock-bootloader-while-using-rooted-otaos-magisk-root.4510295/page-5#post-88499289)
+preinit["cheetah"]="persist" # Pixel Pro 7 https://xdaforums.com/t/guide-to-lock-bootloader-while-using-rooted-otaos-magisk-root.4510295/page-5#post-88499289)
+preinit["oriole"]="=metadata" # Pixel 6
+preinit["shiba"]="=sda10" # Pixel 8
 ```
 
 How to extract:
