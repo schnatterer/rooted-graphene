@@ -46,7 +46,7 @@ OTA_BASE_URL="https://releases.grapheneos.org"
 
 # TODO use dependabot or renovate to upgrade these
 AVB_ROOT_VERSION=3.1.1
-CUSTOTA_VERSION=4.0
+CUSTOTA_VERSION=4.4
 
 set -o nounset -o pipefail -o errexit
 
