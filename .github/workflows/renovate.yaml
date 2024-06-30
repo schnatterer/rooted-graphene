@@ -1,0 +1,26 @@
+name: Renovate
+on:
+  schedule:
+    - cron: '0 20 * * *'
+
+  workflow_dispatch:
+
+  # Rebase open PRs on push
+  push:
+    branches: [ main ]
+
+jobs:
+  renovate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Self-hosted Renovate
+        uses: renovatebot/github-action@v40.1.12
+        with:
+          configurationFile: .github/renovate.json5
+          # https://docs.renovatebot.com/modules/platform/github/#running-using-a-fine-grained-token
+          token: ${{ secrets.RENOVATE_TOKEN }}
+        env:
+            RENOVATE_REPOSITORIES: ${{ github.repository }}
+            LOG_LEVEL: ${{ inputs.logLevel || 'debug' }}
