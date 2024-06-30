@@ -4,12 +4,6 @@ on:
     - cron: '0 20 * * *'
 
   workflow_dispatch:
-    inputs:
-      logLevel:
-        description: "Override default log level"
-        required: false
-        default: "info"
-        type: string
 
 jobs:
   renovate:
@@ -25,4 +19,4 @@ jobs:
           token: ${{ secrets.RENOVATE_TOKEN }}
         env:
             RENOVATE_REPOSITORIES: ${{ github.repository }}
-            LOG_LEVEL: ${{ inputs.logLevel || 'info' }}
+            LOG_LEVEL: ${{ inputs.logLevel || 'debug' }}
