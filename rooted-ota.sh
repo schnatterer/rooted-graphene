@@ -46,7 +46,7 @@ OTA_BASE_URL="https://releases.grapheneos.org"
 
 AVB_ROOT_VERSION=3.4.0
 
-CUSTOTA_VERSION=4.5
+CUSTOTA_VERSION=4.6
 
 set -o nounset -o pipefail -o errexit
 
