@@ -32,6 +32,10 @@ on:
         description: Force OTA server upload
         required: false
         type: boolean
+      skip-ota-server-upload:
+        description: Skip OTA server upload
+        required: false
+        type: boolean
 jobs:
   build-device:
     runs-on: ubuntu-latest
@@ -50,6 +54,7 @@ jobs:
           echo "MAGISK_VERSION=$(echo '${{ github.event.inputs.magisk-version || '' }}' | xargs)" >> $GITHUB_ENV
           echo "OTA_VERSION=$(echo '${{ github.event.inputs.ota-version || '' }}' | xargs)" >> $GITHUB_ENV
           echo "FORCE_OTA_SERVER_UPLOAD=$(echo '${{ github.event.inputs.force-ota-server-upload || '' }}' | xargs)" >> $GITHUB_ENV
+          echo "SKIP_OTA_SERVER_UPLOAD=$(echo '${{ github.event.inputs.skip-ota-server-upload || '' }}' | xargs)" >> $GITHUB_ENV
           echo "SKIP_ROOTLESS=$(echo '${{ github.event.inputs.skip-rootless || '' }}' | xargs)" >> $GITHUB_ENV
       - run: sudo apt-get install -y jq curl git
       - name: release

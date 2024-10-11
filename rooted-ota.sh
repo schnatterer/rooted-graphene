@@ -35,11 +35,15 @@ OTA_VERSION=${OTA_VERSION:-'latest'}
 # Breaking changes in magisk might need to be adapted in new avbroot version
 # Find latest magisk version here: https://github.com/topjohnwu/Magisk/releases, or:
 # curl --fail -sL -I -o /dev/null -w '%{url_effective}' https://github.com/topjohnwu/Magisk/releases/latest | sed 's/.*\/tag\///;'
-MAGISK_VERSION=${MAGISK_VERSION:-'v27.0'}
+MAGISK_VERSION=${MAGISK_VERSION:-'v28.0'}
 
 SKIP_CLEANUP=${SKIP_CLEANUP:-''}
+
 # Set asset released by this script to latest version, even when OTA_VERSION already exists for this device
 FORCE_OTA_SERVER_UPLOAD=${FORCE_OTA_SERVER_UPLOAD:-'false'}
+# Skip setting asset released by this script to latest version, even when OTA_VERSION is latest for this device
+# Takes precedence over FORCE_OTA_SERVER_UPLOAD
+SKIP_OTA_SERVER_UPLOAD=${SKIP_OTA_SERVER_UPLOAD:-'false'}
 
 OTA_CHANNEL=${OTA_CHANNEL:-stable} # Alternative: 'alpha'
 OTA_BASE_URL="https://releases.grapheneos.org"
@@ -187,7 +191,7 @@ function downloadAndroidDependencies() {
 
   mkdir -p .tmp
   if ! ls ".tmp/magisk-$MAGISK_VERSION.apk" >/dev/null 2>&1 && [[ "${POTENTIAL_ASSETS['magisk']+isset}" ]]; then
-    curl --fail -sLo ".tmp/magisk-$MAGISK_VERSION.apk" "https://github.com/topjohnwu/Magisk/releases/download/$MAGISK_VERSION/Magisk-$MAGISK_VERSION.apk"
+    curl --fail -sLo ".tmp/magisk-$MAGISK_VERSION.apk" "https://github.com/topjohnwu/Magisk/releases/download/$MAGISK_VERSION/app-release.apk"
   fi
 
   if ! ls ".tmp/$OTA_TARGET.zip" >/dev/null 2>&1; then
@@ -385,11 +389,13 @@ function uploadOtaServerData() {
     # update only, if current $DEVICE_ID.json does not contain $OTA_VERSION
     # We don't want to trigger users to upgrade on new commits from this repo or new magisk versions
     # They can manually upgrade by downloading the OTAs from the releases and "adb sideload" them
-    if ! grep -q "$OTA_VERSION" "$flavor/$DEVICE_ID.json" || [[ "$FORCE_OTA_SERVER_UPLOAD" == 'true' ]]; then
+    if ! grep -q "$OTA_VERSION" "$flavor/$DEVICE_ID.json" || [[ "$FORCE_OTA_SERVER_UPLOAD" == 'true' ]] && [[ "$SKIP_OTA_SERVER_UPLOAD" != 'true' ]]; then
       cp ".tmp/$flavor/$DEVICE_ID.json" "$flavor/$DEVICE_ID.json"
       git add "$flavor/$DEVICE_ID.json"
-    else
+    elif grep -q "$OTA_VERSION" "$flavor/$DEVICE_ID.json"; then
       printGreen "Skipping update of OTA server, because $OTA_VERSION already in $flavor/$DEVICE_ID.json and FORCE_OTA_SERVER_UPLOAD is false."
+    else
+      printGreen "Skipping update of OTA server, because SKIP_OTA_SERVER_UPLOAD is true."
     fi
   done
   
