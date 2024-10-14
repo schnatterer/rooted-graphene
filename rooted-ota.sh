@@ -48,7 +48,7 @@ SKIP_OTA_SERVER_UPLOAD=${SKIP_OTA_SERVER_UPLOAD:-'false'}
 OTA_CHANNEL=${OTA_CHANNEL:-stable} # Alternative: 'alpha'
 OTA_BASE_URL="https://releases.grapheneos.org"
 
-AVB_ROOT_VERSION=3.7.1
+AVB_ROOT_VERSION=3.8.0
 
 CUSTOTA_VERSION=4.13
 
