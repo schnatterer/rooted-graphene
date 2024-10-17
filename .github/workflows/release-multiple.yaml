@@ -18,6 +18,8 @@ jobs:
       max-parallel: 1
       matrix:
         include:
+          - device-id: caiman # Pixel 9 Pro
+            magisk-preinit-device: sda10
           - device-id: shiba # Pixel 8
             magisk-preinit-device: sda10
           #- device-id: oriole # Pixel 6
