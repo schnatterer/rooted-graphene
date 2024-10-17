@@ -49,26 +49,29 @@ TLDR:
     ```bash
     avbroot ota extract \
         --input /path/to/ota.zip.patched \
-        --directory extracted
+        --directory extracted \
+        --fastboot
     ```
-* Flash the partition images that were extracted.  
-  Flash each partition inside `extracted/`, except for `system`.
-    ```bash
-  cd extracted
-  
-  for img_file in *.img; do
-    partition_name=$(basename "$img_file" .img)
-    if [ "$partition" == "system" ]; then
-        continue
-    fi
-    fastboot flash "$partition_name" "$img_file"
-  done 
-    ```
-* Then, reboot into recovery's fastbootd mode and flash `system`:
-    ```bash
-    fastboot reboot fastboot
-    fastboot flash system system.img
-    ```
+* Set this environment variable to match the extracted folder:
+
+  For Linux/macOS:
+  ```bash
+  export ANDROID_PRODUCT_OUT=extracted
+  ```
+
+  For Windows (powershell):
+  ```powershell
+  $env:ANDROID_PRODUCT_OUT = "extracted"
+  ```
+  or (bat):
+  ```bat
+  set ANDROID_PRODUCT_OUT=extracted
+  ```
+
+* Flash the partitions using the command:
+  ```bash
+  fastboot flashall --skip-reboot
+  ```
 * Set up the custom AVB public key in the bootloader.
     ```bash
     fastboot reboot-bootloader
