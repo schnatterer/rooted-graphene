@@ -52,7 +52,7 @@ OTA_BASE_URL="https://releases.grapheneos.org"
 
 AVB_ROOT_VERSION=3.8.0
 
-CUSTOTA_VERSION=4.13
+CUSTOTA_VERSION=5.1
 
 set -o nounset -o pipefail -o errexit
 
