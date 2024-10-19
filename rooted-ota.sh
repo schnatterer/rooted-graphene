@@ -44,6 +44,8 @@ FORCE_OTA_SERVER_UPLOAD=${FORCE_OTA_SERVER_UPLOAD:-'false'}
 # Skip setting asset released by this script to latest version, even when OTA_VERSION is latest for this device
 # Takes precedence over FORCE_OTA_SERVER_UPLOAD
 SKIP_OTA_SERVER_UPLOAD=${SKIP_OTA_SERVER_UPLOAD:-'false'}
+# Upload OTA to test folder on OTA server
+UPLOAD_TEST_OTA=${UPLOAD_TEST_OTA:-false}
 
 OTA_CHANNEL=${OTA_CHANNEL:-stable} # Alternative: 'alpha'
 OTA_BASE_URL="https://releases.grapheneos.org"
@@ -377,23 +379,29 @@ function uploadOtaServerData() {
   current_branch=$(git rev-parse --abbrev-ref HEAD)
   current_commit=$(git rev-parse --short HEAD)
   current_author=$(git log -1 --format="%an <%ae>")
+  folderPrefix=''
+  
+  if [[ "${UPLOAD_TEST_OTA}" == 'true' ]]; then
+    folderPrefix='test/'
+  fi
 
   git checkout gh-pages
   
   for flavor in "${!POTENTIAL_ASSETS[@]}"; do
     local POTENTIAL_ASSET_NAME="${POTENTIAL_ASSETS[$flavor]}"
+    local targetFile="${folderPrefix}${flavor}/${DEVICE_ID}.json"
 
     uploadFile ".tmp/${POTENTIAL_ASSET_NAME}.csig" "$POTENTIAL_ASSET_NAME.csig" "application/octet-stream"
     
-    mkdir -p "$flavor"
+    mkdir -p "${folderPrefix}${flavor}"
     # update only, if current $DEVICE_ID.json does not contain $OTA_VERSION
     # We don't want to trigger users to upgrade on new commits from this repo or new magisk versions
     # They can manually upgrade by downloading the OTAs from the releases and "adb sideload" them
-    if ! grep -q "$OTA_VERSION" "$flavor/$DEVICE_ID.json" || [[ "$FORCE_OTA_SERVER_UPLOAD" == 'true' ]] && [[ "$SKIP_OTA_SERVER_UPLOAD" != 'true' ]]; then
-      cp ".tmp/$flavor/$DEVICE_ID.json" "$flavor/$DEVICE_ID.json"
-      git add "$flavor/$DEVICE_ID.json"
-    elif grep -q "$OTA_VERSION" "$flavor/$DEVICE_ID.json"; then
-      printGreen "Skipping update of OTA server, because $OTA_VERSION already in $flavor/$DEVICE_ID.json and FORCE_OTA_SERVER_UPLOAD is false."
+    if ! grep -q "$OTA_VERSION" "${targetFile}" || [[ "$FORCE_OTA_SERVER_UPLOAD" == 'true' ]] && [[ "$SKIP_OTA_SERVER_UPLOAD" != 'true' ]]; then
+      cp ".tmp/${flavor}/$DEVICE_ID.json" "${targetFile}"
+      git add "${targetFile}"
+    elif grep -q "${OTA_VERSION}" "${targetFile}"; then
+      printGreen "Skipping update of OTA server, because ${OTA_VERSION} already in ${folderPrefix}${flavor}/${DEVICE_ID}.json and FORCE_OTA_SERVER_UPLOAD is false."
     else
       printGreen "Skipping update of OTA server, because SKIP_OTA_SERVER_UPLOAD is true."
     fi
