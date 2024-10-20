@@ -15,19 +15,17 @@ on:
       device-id:
         description: Device ID
         required: true
+      magisk-preinit-device:
+        description: Magisk preinit device
+        required: false
       skip-rootless:
         description: skip building rootless OTA
         type: boolean
         required: false
-      magisk-preinit-device:
-        description: Magisk preinit device
+      upload-test-ota:
+        description: Upload OTA to test folder
         required: false
-      ota-version:
-        description: OTA version
-        required: false
-      magisk-version:
-        description: Magisk version
-        required: false
+        type: boolean
       force-ota-server-upload:
         description: Force OTA server upload
         required: false
@@ -36,10 +34,12 @@ on:
         description: Skip OTA server upload
         required: false
         type: boolean
-      upload-test-ota:
-        description: Upload OTA to test folder
+      ota-version:
+        description: OTA version
         required: false
-        type: boolean
+      magisk-version:
+        description: Magisk version
+        required: false
 jobs:
   build-device:
     runs-on: ubuntu-latest
