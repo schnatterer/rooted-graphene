@@ -52,7 +52,7 @@ OTA_BASE_URL="https://releases.grapheneos.org"
 
 AVB_ROOT_VERSION=3.8.0
 
-CUSTOTA_VERSION=4.13
+CUSTOTA_VERSION=5.1
 
 set -o nounset -o pipefail -o errexit
 
@@ -109,15 +109,19 @@ function cleanup() {
 }
 
 function checkBuildNecessary() {
+  local currentCommit
+  currentCommit=$(git rev-parse --short HEAD)
+    
+    
   if [[ -n "$MAGISK_PREINIT_DEVICE" ]]; then 
     # e.g. oriole-2023121200-magisk-v26.4-4647f74-dirty.zip
-    POTENTIAL_ASSETS['magisk']="$DEVICE_ID-$OTA_VERSION-magisk-$MAGISK_VERSION-$(git rev-parse --short HEAD)$(createDirtySuffix).zip"
+    POTENTIAL_ASSETS['magisk']="${DEVICE_ID}-${OTA_VERSION}-${currentCommit}-magisk-${MAGISK_VERSION}$(createAssetSuffix).zip"
   else 
     printGreen "MAGISK_PREINIT_DEVICE not set for device, not creating magisk OTA"
   fi
   
   if [[ "$SKIP_ROOTLESS" != 'true' ]]; then
-    POTENTIAL_ASSETS['rootless']="$DEVICE_ID-$OTA_VERSION-rootless-$(git rev-parse --short HEAD)$(createDirtySuffix).zip"
+    POTENTIAL_ASSETS['rootless']="${DEVICE_ID}-${OTA_VERSION}-${currentCommit}-rootless$(createAssetSuffix).zip"
   else
     printGreen "SKIP_ROOTLESS set, not creating rootless OTA"
   fi
@@ -127,7 +131,7 @@ function checkBuildNecessary() {
 
   if [[ -z "$GITHUB_REPO" ]]; then echo "Env Var GITHUB_REPO not set, skipping check for existing release" && return; fi
 
-  echo "Potential release: $OTA_VERSION"
+  echo "Potential release: ${OTA_VERSION}"
 
   local params=()
   local url="https://api.github.com/repos/${GITHUB_REPO}/releases"
@@ -180,11 +184,13 @@ function checkMandatoryVariable() {
   done
 }
 
-function createDirtySuffix() {
+function createAssetSuffix() {
   if [[ -n "$(git status --porcelain --untracked-files=no)" ]]; then
-    echo "-dirty"
+    echo '-dirty'
+  elif [[ "${UPLOAD_TEST_OTA}" == 'true' ]]; then
+    echo '-test'
   else
-    echo ""
+    echo ''
   fi
 }
 
@@ -339,6 +345,8 @@ function createOtaServerData() {
     args+=("--output" "${targetFile}.csig")
     args+=("--key" "$KEY_OTA")
     args+=("--cert" "$CERT_OTA")
+    # Keep version 1 for a while in order to stay downward compatible
+    args+=("--csig-version" '1')
   
     # If env vars not set, passphrases will be queried interactively
     if [ -v PASSPHRASE_OTA ]; then
