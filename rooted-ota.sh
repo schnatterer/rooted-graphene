@@ -54,6 +54,8 @@ AVB_ROOT_VERSION=3.8.0
 
 CUSTOTA_VERSION=5.1
 
+CHENXIAOLONG_PK='ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDOe6/tBnO7xZhAWXRj3ApUYgn+XZ0wnQiXM8B7tPgv4'
+
 set -o nounset -o pipefail -o errexit
 
 declare -A POTENTIAL_ASSETS
@@ -229,13 +231,31 @@ function findLatestVersion() {
 }
 
 function downloadAvBroot() {
+  downloadAndVerifyFromChenxiaolong 'avbroot' "$AVB_ROOT_VERSION"
+}
+
+function downloadAndVerifyFromChenxiaolong() {
+  local repo="$1"
+  local version="$2"
+  local artifact="${3:-$1}" # optional: If not set, use repo name
+  
+  local url="https://github.com/chenxiaolong/${repo}/releases/download/v${version}/${artifact}-${version}-x86_64-unknown-linux-gnu.zip"
+  local downloadedZipFile
+  downloadedZipFile="$(mktemp)"
+  
   mkdir -p .tmp
 
-  if ! ls ".tmp/avbroot" >/dev/null 2>&1; then
-    curl --fail -sL "https://github.com/chenxiaolong/avbroot/releases/download/v$AVB_ROOT_VERSION/avbroot-$AVB_ROOT_VERSION-x86_64-unknown-linux-gnu.zip" >.tmp/avb.zip &&
-      echo N | unzip .tmp/avb.zip -d .tmp &&
-      rm .tmp/avb.zip &&
-      chmod +x .tmp/avbroot
+  if ! ls ".tmp/${artifact}" >/dev/null 2>&1; then
+    curl --fail -sL "${url}" > "${downloadedZipFile}"
+    curl --fail -sL "${url}.sig" > "${downloadedZipFile}.sig"
+    
+    # Validate against author's public key
+    ssh-keygen -Y verify -I chenxiaolong -f <(echo "chenxiaolong $CHENXIAOLONG_PK") -n file \
+      -s "${downloadedZipFile}.sig" < "${downloadedZipFile}"
+    
+    echo N | unzip "${downloadedZipFile}" -d .tmp
+    rm "${downloadedZipFile}"*
+    chmod +x ".tmp/${artifact}" # e.g. .tmp/custota-tool
   fi
 }
 
@@ -368,16 +388,7 @@ function createOtaServerData() {
 }
 
 function downloadCusotaTool() {
-  mkdir -p .tmp
-  # TODO verify, avbroot as well
-  # https://github.com/chenxiaolong/Custota/releases/download/v3.0/custota-tool-3.0-x86_64-unknown-linux-gnu.zip.sig
-
-  if ! ls ".tmp/custota-tool" >/dev/null 2>&1; then
-    curl --fail -sL "https://github.com/chenxiaolong/Custota/releases/download/v$CUSTOTA_VERSION/custota-tool-$CUSTOTA_VERSION-x86_64-unknown-linux-gnu.zip" >.tmp/custota.zip &&
-      echo N | unzip .tmp/custota.zip -d .tmp &&
-      rm .tmp/custota.zip &&
-      chmod +x .tmp/custota-tool
-  fi
+  downloadAndVerifyFromChenxiaolong 'Custota' "$CUSTOTA_VERSION" 'custota-tool'
 }
 
 function uploadOtaServerData() {
