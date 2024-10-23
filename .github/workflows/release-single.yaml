@@ -34,6 +34,10 @@ on:
         description: Skip OTA server upload
         required: false
         type: boolean
+      skip-release:
+        description: Skip release (build only)
+        required: false
+        type: boolean
       ota-version:
         description: OTA version
         required: false
@@ -48,7 +52,7 @@ jobs:
         with:
           # Allow for switching to github-pages branch
           fetch-depth: 0
-      - name: Trim input
+      - name: Set inputs
         # Empty means, use version defined in rooted-ota.sh
         # Note the difference between github.event.inputs (workflow_dispatch) and inputs (workflow_call)
         run: |
@@ -61,6 +65,7 @@ jobs:
           echo "SKIP_OTA_SERVER_UPLOAD=$(echo '${{ github.event.inputs.skip-ota-server-upload || '' }}' | xargs)" >> $GITHUB_ENV
           echo "UPLOAD_TEST_OTA=$(echo '${{ github.event.inputs.upload-test-ota || '' }}' | xargs)" >> $GITHUB_ENV
           echo "SKIP_ROOTLESS=$(echo '${{ github.event.inputs.skip-rootless || '' }}' | xargs)" >> $GITHUB_ENV
+          echo "SKIP_RELEASE=$(echo '${{ github.event.inputs.skip-release || '' }}' | xargs)" >> $GITHUB_ENV
       - run: sudo apt-get install -y jq curl git
       - name: release
         env:
@@ -72,4 +77,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPO: ${{ github.repository }}
         run: |
-          DEBUG=1 bash -c '. rooted-ota.sh && createAndReleaseRootedOta'
+          if [[ $SKIP_RELEASE == 'true' ]]; then
+            DEBUG=1 bash -c '. rooted-ota.sh && createRootedOta && createOtaServerData'
+          else
+            DEBUG=1 bash -c '. rooted-ota.sh && createAndReleaseRootedOta'
+          fi
