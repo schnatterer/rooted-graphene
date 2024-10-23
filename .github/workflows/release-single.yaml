@@ -1,6 +1,10 @@
 name: Release single device
 
 on:
+  push:
+    branches:
+      - main
+
   workflow_call:
     inputs:
       device-id:
@@ -66,6 +70,11 @@ jobs:
           echo "UPLOAD_TEST_OTA=$(echo '${{ github.event.inputs.upload-test-ota || '' }}' | xargs)" >> $GITHUB_ENV
           echo "SKIP_ROOTLESS=$(echo '${{ github.event.inputs.skip-rootless || '' }}' | xargs)" >> $GITHUB_ENV
           echo "SKIP_RELEASE=$(echo '${{ github.event.inputs.skip-release || '' }}' | xargs)" >> $GITHUB_ENV
+          
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            echo "Running on push: Simple build without release for device $DEVICE_ID"
+            echo "SKIP_RELEASE=true" >> $GITHUB_ENV
+          fi
       - run: sudo apt-get install -y jq curl git
       - name: release
         env:
