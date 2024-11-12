@@ -2,8 +2,9 @@ name: Release single device
 
 on:
   push:
+    # Note that push will not release, only build to see if there are obvious failures
     branches:
-      - main
+      - '*'
 
   workflow_call:
     inputs:
