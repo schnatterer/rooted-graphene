@@ -1,7 +1,14 @@
 {
   $schema: "https://docs.renovatebot.com/renovate-schema.json",
+  extends: [
+  "config:recommended",
+  ":dependencyDashboard"
+  ],
   prHourlyLimit: 0,
   labels: ["dependencies"],
+  vulnerabilityAlerts: {
+   labels: ["security", "dependencies"],
+  },
   packageRules: [
     {
       description: "Automatically merge minor and patch-level updates",
