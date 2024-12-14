@@ -1,7 +1,7 @@
 {
   "version": 2,
   "full": {
-    "location_ota": "https://github.com/schnatterer/rooted-graphene/releases/download/2024120900/caiman-2024120900-15ecc22-rootless.zip",
-    "location_csig": "https://github.com/schnatterer/rooted-graphene/releases/download/2024120900/caiman-2024120900-15ecc22-rootless.zip.csig"
+    "location_ota": "https://github.com/schnatterer/rooted-graphene/releases/download/2024121200/caiman-2024121200-15ecc22-rootless.zip",
+    "location_csig": "https://github.com/schnatterer/rooted-graphene/releases/download/2024121200/caiman-2024121200-15ecc22-rootless.zip.csig"
   }
 }
