@@ -22,15 +22,29 @@ Provides its own OTA server for [Custota](https://github.com/chenxiaolong/Custot
 
 #### Install GrapheneOS
 
+##### Web Installer
+
+Using the web installier is easier, but will always install the latest version. 
+So it's not possible to verify if OTA upgrades work right away.
+
+Use the [web installer](https://grapheneos.org/install/web) to install GrapheneOS:
+* Write down the installed version, e.g. `Downloaded caiman-install-2024123000.zip release`.
+* Stop at `Locking the bootloader` and close the browser. 
+  We'll lock the bootloader later!
+
+##### Manual install
+
+Alternative method to Web installer.
+
 Download [**factory image**](https://grapheneos.org/releases) and follow the [official instructions](https://grapheneos.org/install/cli)  to install GrapheneOS.
 
-TLDR: 
+TLDR:
 
 * Enable OEM unlocking
 * Obtain latest `fastboot`
 * Unlock Bootloader:
   Enable usb debugging and execute `adb reboot bootloader`, or
-      > The easiest approach is to reboot the device and begin holding the volume down button until it boots up into the bootloader interface.
+  > The easiest approach is to reboot the device and begin holding the volume down button until it boots up into the bootloader interface.
    ```shell
    fastboot flashing unlock
    ```
@@ -44,7 +58,11 @@ TLDR:
 
 #### Patch GrapheneOS with OTAs from this image
 
+Once GrapheneOS is installed
+
 * Download the [OTA from releases](https://github.com/schnatterer/rooted-graphene/releases/) with **the same version** that you just installed. 
+* Obtain latest `fastboot`
+* Install [avbroot](https://github.com/chenxiaolong/avbroot)
 * Extract the partition images from the patched OTA that are different from the original.
     ```bash
     avbroot ota extract \
