@@ -22,6 +22,8 @@ jobs:
             magisk-preinit-device: sda10
           - device-id: shiba # Pixel 8
             magisk-preinit-device: sda10
+          - device-id: bluejay # Pixel 6a
+            magisk-preinit-device: sda8         
           #- device-id: oriole # Pixel 6
           #  magisk-preinit-device: metadata
           # - device-id: cheetah # Pixel Pro 7 
