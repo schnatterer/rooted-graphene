@@ -20,6 +20,8 @@ jobs:
         include:
           - device-id: caiman # Pixel 9 Pro
             magisk-preinit-device: sda10
+          - device-id: tokay # Pixel 9
+            magisk-preinit-device: sda10
           - device-id: shiba # Pixel 8
             magisk-preinit-device: sda10
           - device-id: bluejay # Pixel 6a
