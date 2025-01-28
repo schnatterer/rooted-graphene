@@ -1,7 +1,7 @@
 {
   "version": 2,
   "full": {
-    "location_ota": "https://github.com/schnatterer/rooted-graphene/releases/download/2025011500/shiba-2025011500-4cbd9d7-rootless.zip",
-    "location_csig": "https://github.com/schnatterer/rooted-graphene/releases/download/2025011500/shiba-2025011500-4cbd9d7-rootless.zip.csig"
+    "location_ota": "https://github.com/schnatterer/rooted-graphene/releases/download/2025012700/shiba-2025012700-8d1c966-rootless.zip",
+    "location_csig": "https://github.com/schnatterer/rooted-graphene/releases/download/2025012700/shiba-2025012700-8d1c966-rootless.zip.csig"
   }
 }
