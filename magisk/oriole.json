@@ -1,7 +1,7 @@
 {
   "version": 2,
   "full": {
-    "location_ota": "https://github.com/schnatterer/rooted-graphene/releases/download/2024090400/oriole-2024090400-magisk-v27.0-0d65795.zip",
-    "location_csig": "https://github.com/schnatterer/rooted-graphene/releases/download/2024090400/oriole-2024090400-magisk-v27.0-0d65795.zip.csig"
+    "location_ota": "https://github.com/schnatterer/rooted-graphene/releases/download/2025020200/oriole-2025020200-7c061ff-magisk-v28.1.zip",
+    "location_csig": "https://github.com/schnatterer/rooted-graphene/releases/download/2025020200/oriole-2025020200-7c061ff-magisk-v28.1.zip.csig"
   }
 }
