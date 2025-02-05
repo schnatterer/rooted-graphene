@@ -1,7 +1,7 @@
 {
   "version": 2,
   "full": {
-    "location_ota": "https://github.com/schnatterer/rooted-graphene/releases/download/2025020200/bluejay-2025020200-45d8f2e-rootless.zip",
-    "location_csig": "https://github.com/schnatterer/rooted-graphene/releases/download/2025020200/bluejay-2025020200-45d8f2e-rootless.zip.csig"
+    "location_ota": "https://github.com/schnatterer/rooted-graphene/releases/download/2025020300/bluejay-2025020300-7c061ff-rootless.zip",
+    "location_csig": "https://github.com/schnatterer/rooted-graphene/releases/download/2025020300/bluejay-2025020300-7c061ff-rootless.zip.csig"
   }
 }
