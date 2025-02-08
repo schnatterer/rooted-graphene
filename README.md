@@ -8,7 +8,22 @@ Provides its own OTA server for [Custota](https://github.com/chenxiaolong/Custot
 > ⚠️ OS and root work in general. However, zygisk does not (and [likely never will](https://github.com/topjohnwu/Magisk/pull/7606)) work, leading to magisk being easily discovered by other apps and lots of banking apps not working.  
  See [bellow](#using-other-rooting-mechanisms) for alternatives.
 
-## Usage
+## Supported devices
+
+See [.github/workflows/release-multiple.yaml](.github/workflows/release-multiple.yaml)
+
+## Possible breaking changes
+
+### Unreleased
+* Start shipping custota with OTA
+* This allows for OTA updates even when rootless and relieves you of the burden to keep the magisk module up to date.
+* If you have the custota module installed
+  * uninstall it and reboot
+  * open custota
+  * test, if an upgrading works by long pressing `Version` and then selecting `Allow reinstall`
+  * you might have to change ownership or delete these files:
+    * `/sdcard/Android/data/com.chiller3.custota/`
+    * `/data/ota_packagecare_map.pb`
 
 ## Initial installation of OS
 
@@ -111,24 +126,24 @@ Once GrapheneOS is installed
     fastboot flashing lock
     ```
 * Confirm by pressing volume down and then power. Then reboot.
-* Remember: **Do not uncheck `OEM unlocking`!**  
-  That is, in Graphene's startup wizard, leave this box unticked 👇️
-  <img src="https://github.com/schnatterer/rooted-graphene/assets/1824962/6ef90b46-2070-4d08-80d4-5f4a0e749cbe" width="216" height="480" alt="Screenshot of GrapheneOS recommending to lock">
-
+* Remember: **Do not uncheck `OEM unlocking`!** (to avoid [hard-bricking](https://github.com/chenxiaolong/avbroot/blob/v3.12.0/README.md#warnings-and-caveats))  
+  That is, in Graphene's startup wizard, leave this box unticked 👇️  
+  <img src="https://github.com/schnatterer/rooted-graphene/assets/1824962/6ef90b46-2070-4d08-80d4-5f4a0e749cbe" width="216" height="480" alt="Screenshot of GrapheneOS recommending to lock">  
+  Note: The OTA contains [OEMUnlockOnBoot](https://github.com/chenxiaolong/OEMUnlockOnBoot), so OEM locking should be impossible.  
+  Still, better safe than sorry, keep it unlocked.
 
 #### Set up OTA updates
 
 * [Disable system updater app](https://github.com/chenxiaolong/avbroot#ota-updates).
-* Use the [Custota](https://github.com/chenxiaolong/Custota) magisk module.
-  * To do so, download and install the Custota module in magsik and reboot.
-  * Open Custota and set the OTA server URL to point to this OTA server:  https://schnatterer.github.io/rooted-graphene/magisk
-* Alternatively you could do updates manually via `adb sideload`:
-  * reboot the device and begin holding the volume down button until it boots up into the bootloader interface
-  * using volume buttons, toggle to recovery. Confirm by pressing power button
-  * If the screen is stuck at a `No command` message, press the volume up button once while holding down the power button.
-  * using volume buttons, toggle to `Apply update from ADB`. Confirm by pressing power button
-  * `adb sideload xyz.zip`
-  * See also [here](https://github.com/chenxiaolong/avbroot#updates).
+* Open Custota app and set the OTA server URL to point to this OTA server: https://schnatterer.github.io/rooted-graphene/magisk
+
+Alternatively you could do updates manually via `adb sideload`:
+* reboot the device and begin holding the volume down button until it boots up into the bootloader interface
+* using volume buttons, toggle to recovery. Confirm by pressing power button
+* If the screen is stuck at a `No command` message, press the volume up button once while holding down the power button.
+* using volume buttons, toggle to `Apply update from ADB`. Confirm by pressing power button
+* `adb sideload xyz.zip`
+* See also [here](https://github.com/chenxiaolong/avbroot#updates).
 
 ## Remove root / rootless
 
@@ -202,6 +217,10 @@ PASSPHRASE_AVB=1 PASSPHRASE_OTA=1 bash -c '. rooted-ota.sh && key2base64 && KEY_
 
 # Avoid having to download OTA all over again: SKIP_CLEANUP=true or:
 mkdir -p .tmp && ln -s $PWD/shiba-ota_update-2023121200.zip .tmp/shiba-ota_update-2023121200.zip
+
+# Test only patching
+  export PASSPHRASE_AVB=x PASSPHRASE_OTA=y
+SKIP_CLEANUP=true DEVICE_ID=oriole MAGISK_PREINIT_DEVICE='metadata' bash -c '. rooted-ota.sh && createRootedOta'
 
 # Test only releasing
   GITHUB_TOKEN=gh... \
