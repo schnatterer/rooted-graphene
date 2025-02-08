@@ -35,7 +35,9 @@ OTA_VERSION=${OTA_VERSION:-'latest'}
 # Breaking changes in magisk might need to be adapted in new avbroot version
 # Find latest magisk version here: https://github.com/topjohnwu/Magisk/releases, or:
 # curl --fail -sL -I -o /dev/null -w '%{url_effective}' https://github.com/topjohnwu/Magisk/releases/latest | sed 's/.*\/tag\///;'
-MAGISK_VERSION=${MAGISK_VERSION:-'v28.1'}
+# renovate: datasource=github-releases packageName=topjohnwu/Magisk versioning=semver-coerced
+DEFAULT_MAGISK_VERSION=v28.1
+MAGISK_VERSION=${MAGISK_VERSION:-${DEFAULT_MAGISK_VERSION}}
 
 SKIP_CLEANUP=${SKIP_CLEANUP:-''}
 
@@ -50,8 +52,10 @@ UPLOAD_TEST_OTA=${UPLOAD_TEST_OTA:-false}
 OTA_CHANNEL=${OTA_CHANNEL:-stable} # Alternative: 'alpha'
 OTA_BASE_URL="https://releases.grapheneos.org"
 
+# renovate: datasource=github-releases packageName=chenxiaolong/avbroot versioning=semver
 AVB_ROOT_VERSION=3.12.0
 
+# renovate: datasource=github-releases packageName=chenxiaolong/Custota versioning=semver-coerced
 CUSTOTA_VERSION=5.5
 
 CHENXIAOLONG_PK='ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDOe6/tBnO7xZhAWXRj3ApUYgn+XZ0wnQiXM8B7tPgv4'
