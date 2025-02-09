@@ -56,7 +56,7 @@ OTA_BASE_URL="https://releases.grapheneos.org"
 AVB_ROOT_VERSION=3.12.0
 
 # renovate: datasource=github-releases packageName=chenxiaolong/Custota versioning=semver-coerced
-CUSTOTA_VERSION=5.5
+CUSTOTA_VERSION=5.6
 
 CHENXIAOLONG_PK='ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDOe6/tBnO7xZhAWXRj3ApUYgn+XZ0wnQiXM8B7tPgv4'
 
