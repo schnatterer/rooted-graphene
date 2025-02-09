@@ -376,14 +376,23 @@ function base642key() {
 function releaseOta() {
   checkMandatoryVariable 'GITHUB_REPO' 'GITHUB_TOKEN'
 
-  local response
+  local response changelog
   if [[ -z "$RELEASE_ID" ]]; then
+    
+    changelog=$(curl -X POST -H "Authorization: token $GITHUB_TOKEN" \
+      -d "{
+              \"tag_name\": \"$OTA_VERSION\",
+              \"target_commitish\": \"main\"
+            }" \
+      "https://api.github.com/repos/$GITHUB_REPO/releases/generate-notes" | jq -r '.body // empty')
+    changelog="Update to [GrapheneOS ${OTA_VERSION}](https://grapheneos.org/releases#${OTA_VERSION}).\n\n${changelog}"
+    
     response=$(curl --fail -X POST -H "Authorization: token $GITHUB_TOKEN" \
       -d "{
               \"tag_name\": \"$OTA_VERSION\",
               \"target_commitish\": \"main\",
               \"name\": \"$OTA_VERSION\",
-              \"body\": \"See [Changelog](https://grapheneos.org/releases#$OTA_VERSION).\"
+              \"body\": \"${changelog}\"
             }" \
       "https://api.github.com/repos/$GITHUB_REPO/releases")
     RELEASE_ID=$(echo "$response" | jq -r '.id')
