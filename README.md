@@ -209,11 +209,11 @@ RELEASE_ID='' \
 ASSET_EXISTS=false \
 POTENTIAL_RELEASE_NAME=test \
 POTENTIAL_ASSET_NAME=test.zip \
-GITHUB_REPO=schnatterer/rooted-ota \
+GITHUB_REPO=schnatterer/rooted-graphene \
   bash -c '. rooted-ota.sh && releaseOta'
 
 # Test only GH pages deployment
-GITHUB_REPO=schnatterer/rooted-ota \
+GITHUB_REPO=schnatterer/rooted-graphene \
 DEVICE_ID=oriole \
 MAGISK_PREINIT_DEVICE=metadata \
   bash -c '. rooted-ota.sh && findLatestVersion && checkBuildNecessary && createOtaServerData && uploadOtaServerData'
@@ -221,7 +221,7 @@ MAGISK_PREINIT_DEVICE=metadata \
 
 # e2e test
   GITHUB_TOKEN=gh... \
-GITHUB_REPO=schnatterer/rooted-ota \
+GITHUB_REPO=schnatterer/rooted-graphene \
 DEVICE_ID=oriole \
 MAGISK_PREINIT_DEVICE=metadata \
 SKIP_CLEANUP=true \

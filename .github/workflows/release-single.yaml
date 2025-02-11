@@ -33,6 +33,10 @@ on:
         description: Upload OTA to test folder
         required: false
         type: boolean
+      force-build:
+        description: Force artifacts to be built and uploaded to release if non-existing
+        required: false
+        type: boolean
       force-ota-server-upload:
         description: Force OTA server upload
         required: false
@@ -69,6 +73,7 @@ jobs:
           echo "MAGISK_VERSION=$(echo '${{ github.event.inputs.magisk-version || '' }}' | xargs)" >> $GITHUB_ENV
           echo "OTA_VERSION=$(echo '${{ github.event.inputs.ota-version || '' }}' | xargs)" >> $GITHUB_ENV
           echo "FORCE_OTA_SERVER_UPLOAD=$(echo '${{ github.event.inputs.force-ota-server-upload || '' }}' | xargs)" >> $GITHUB_ENV
+          echo "FORCE_BUILD=$(echo '${{ github.event.inputs.force-build || '' }}' | xargs)" >> $GITHUB_ENV
           echo "SKIP_OTA_SERVER_UPLOAD=$(echo '${{ github.event.inputs.skip-ota-server-upload || '' }}' | xargs)" >> $GITHUB_ENV
           echo "UPLOAD_TEST_OTA=$(echo '${{ github.event.inputs.upload-test-ota || '' }}' | xargs)" >> $GITHUB_ENV
           echo "SKIP_ROOTLESS=$(echo '${{ github.event.inputs.skip-rootless || '' }}' | xargs)" >> $GITHUB_ENV
@@ -76,6 +81,7 @@ jobs:
           
           if [[ "${{ github.event_name }}" == "push" ]]; then
             echo "Running on push: Simple build without release for device $DEVICE_ID"
+            echo "FORCE_BUILD=true" >> $GITHUB_ENV
             echo "SKIP_RELEASE=true" >> $GITHUB_ENV
           fi
       - run: sudo apt-get install -y jq curl git

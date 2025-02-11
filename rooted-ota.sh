@@ -43,6 +43,14 @@ SKIP_CLEANUP=${SKIP_CLEANUP:-''}
 
 # Set asset released by this script to latest version, even when OTA_VERSION already exists for this device
 FORCE_OTA_SERVER_UPLOAD=${FORCE_OTA_SERVER_UPLOAD:-'false'}
+# Forces the artifacts to be built (and uploaded to a release)
+# even it a release already contains the combination of device and flavor.
+# This will lead to multiple artifacts with different commits on the release (that are not linked in the OTA server and thus are likely never used).
+# However, except for test builds, we want the changes to be rolled out with new version.
+# So these artifacts are just a waste of storage resources. Example
+# shiba-2025020500-3e0add9-rootless.zip
+# shiba-2025020500-6718632-rootless.zip
+FORCE_BUILD=${FORCE_BUILD:-'false'}
 # Skip setting asset released by this script to latest version, even when OTA_VERSION is latest for this device
 # Takes precedence over FORCE_OTA_SERVER_UPLOAD
 SKIP_OTA_SERVER_UPLOAD=${SKIP_OTA_SERVER_UPLOAD:-'false'}
@@ -50,6 +58,7 @@ SKIP_OTA_SERVER_UPLOAD=${SKIP_OTA_SERVER_UPLOAD:-'false'}
 UPLOAD_TEST_OTA=${UPLOAD_TEST_OTA:-false}
 
 OTA_CHANNEL=${OTA_CHANNEL:-stable} # Alternative: 'alpha'
+NO_COLOR=${NO_COLOR:-''}
 OTA_BASE_URL="https://releases.grapheneos.org"
 
 # renovate: datasource=github-releases packageName=chenxiaolong/avbroot versioning=semver
@@ -108,16 +117,16 @@ function createRootedOta() {
 }
 
 function cleanup() {
-  echo "Cleaning up..."
+  print "Cleaning up..."
   rm -rf .tmp
   unset KEY_AVB_BASE64 KEY_OTA_BASE64 CERT_OTA_BASE64
-  echo "Cleanup complete."
+  print "Cleanup complete."
 }
 
 function checkBuildNecessary() {
   local currentCommit
   currentCommit=$(git rev-parse --short HEAD)
-    
+  POTENTIAL_ASSETS=()
     
   if [[ -n "$MAGISK_PREINIT_DEVICE" ]]; then 
     # e.g. oriole-2023121200-magisk-v26.4-4647f74-dirty.zip
@@ -135,9 +144,9 @@ function checkBuildNecessary() {
   RELEASE_ID=''
   local response
 
-  if [[ -z "$GITHUB_REPO" ]]; then echo "Env Var GITHUB_REPO not set, skipping check for existing release" && return; fi
+  if [[ -z "$GITHUB_REPO" ]]; then print "Env Var GITHUB_REPO not set, skipping check for existing release" && return; fi
 
-  echo "Potential release: ${OTA_VERSION}"
+  print "Potential release: ${OTA_VERSION}"
 
   local params=()
   local url="https://api.github.com/repos/${GITHUB_REPO}/releases"
@@ -153,20 +162,24 @@ function checkBuildNecessary() {
   )
 
   if [[ -n ${response} ]]; then
-    RELEASE_ID=$(echo "$response" | jq -r '.id')
-    echo "Release ${OTA_VERSION} exists. ID=$RELEASE_ID"
+    RELEASE_ID=$(echo "${response}" | jq -r '.id')
+    print "Release ${OTA_VERSION} exists. ID=$RELEASE_ID"
     
     for flavor in "${!POTENTIAL_ASSETS[@]}"; do
-      local POTENTIAL_ASSET_NAME="${POTENTIAL_ASSETS[$flavor]}"
-      echo "Checking if asset exists ${POTENTIAL_ASSET_NAME}"
+      local selectedAsset POTENTIAL_ASSET_NAME="${POTENTIAL_ASSETS[$flavor]}"
+      print "Checking if asset exists ${POTENTIAL_ASSET_NAME}"
       
-      selected_asset=$(echo "$response" | jq -r --arg assetName "${POTENTIAL_ASSET_NAME}" '.assets[] | select(.name == $assetName)')
+      # Save some storage by not building and uploading every new commit as asset
+      selectedAsset=$(echo "${response}" | jq -r --arg assetPrefix "${DEVICE_ID}-${OTA_VERSION}" \
+        '.assets[] | select(.name | startswith($assetPrefix)) | .name' \
+          | grep "${flavor}")
   
-      if [ -n "$selected_asset" ]; then
-        printGreen "Asset with name '$POTENTIAL_ASSET_NAME' already released. Not creating it."
+      if [[ -n "${selectedAsset}" ]] && [[ "$FORCE_BUILD" != 'true' ]] && [[ "$UPLOAD_TEST_OTA" != 'true' ]]; then
+        printGreen "Skipping build of asset name '$POTENTIAL_ASSET_NAME'. Because this flavor already is released with a different commit." \
+          "Set FORCE_BUILD or UPLOAD_TEST_OTA to force. Assets found on release: ${selectedAsset//$'\n'/ }"
         unset "POTENTIAL_ASSETS[$flavor]"
       else
-        echo "No asset found with name '$POTENTIAL_ASSET_NAME'."
+        print "No asset found with name '$POTENTIAL_ASSET_NAME'."
       fi
     done
     
@@ -175,7 +188,7 @@ function checkBuildNecessary() {
       exit 0
     fi
   else
-    echo "Release ${OTA_VERSION} does not exist."
+    print "Release ${OTA_VERSION} does not exist."
   fi
 }
 
@@ -191,13 +204,14 @@ function checkMandatoryVariable() {
 }
 
 function createAssetSuffix() {
-  if [[ -n "$(git status --porcelain --untracked-files=no)" ]]; then
-    echo '-dirty'
-  elif [[ "${UPLOAD_TEST_OTA}" == 'true' ]]; then
-    echo '-test'
-  else
-    echo ''
+  local suffix=''
+  if [[ "${UPLOAD_TEST_OTA}" == 'true' ]]; then
+    suffix+='-test'
   fi
+  if [[ -n "$(git status --porcelain --untracked-files=no)" ]]; then
+    suffix+='-dirty'
+  fi
+  echo "$suffix"
 }
 
 function downloadAndroidDependencies() {
@@ -219,7 +233,7 @@ function findLatestVersion() {
   if [[ "$MAGISK_VERSION" == 'latest' ]]; then
     MAGISK_VERSION=$(curl --fail -sL -I -o /dev/null -w '%{url_effective}' https://github.com/topjohnwu/Magisk/releases/latest | sed 's/.*\/tag\///;')
   fi
-  echo "Magisk version: $MAGISK_VERSION"
+  print "Magisk version: $MAGISK_VERSION"
 
   # Search for a new version grapheneos.
   # e.g. https://releases.grapheneos.org/shiba-stable
@@ -231,7 +245,7 @@ function findLatestVersion() {
   OTA_TARGET="$DEVICE_ID-$GRAPHENE_TYPE-$OTA_VERSION"
   OTA_URL="$OTA_BASE_URL/$OTA_TARGET.zip"
   # e.g.  shiba-ota_update-2023121200
-  echo "OTA target: $OTA_TARGET; OTA URL: $OTA_URL"
+  print "OTA target: $OTA_TARGET; OTA URL: $OTA_URL"
 }
 
 function downloadAvBroot() {
@@ -444,10 +458,22 @@ function uploadOtaServerData() {
   git checkout "$current_branch"
 }
 
+function print() {
+  echo -e "$(date '+%Y-%m-%d %H:%M:%S'): $*"
+}
+
 function printGreen() {
-    echo -e "\e[32m$1\e[0m"
+  if [[ -z "${NO_COLOR}" ]]; then
+    echo -e "\e[32m$(date '+%Y-%m-%d %H:%M:%S'): $*\e[0m"
+  else
+      print "$@"
+  fi
 }
 
 function printRed() {
-    echo -e "\e[31m$1\e[0m"
+  if [[ -z "${NO_COLOR}" ]]; then
+   echo -e "\e[31m$(date '+%Y-%m-%d %H:%M:%S'): $*\e[0m"
+  else
+      print "$@"
+  fi
 }
