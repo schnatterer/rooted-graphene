@@ -27,6 +27,10 @@
         //AVB_ROOT_VERSION=3.9.0
         // See https://docs.renovatebot.com/modules/manager/regex/
         "# renovate: datasource=(?<datasource>[a-z-]+?)(?: depName=(?<depName>.+?))? packageName=(?<packageName>.+?)(?: versioning=(?<versioning>[a-z-]+?))?\\s.+?_VERSION=(?<currentValue>.+?)\\s",
+        // # renovate: datasource=git-refs packageName=https://github.com/chenxiaolong/my-avbroot-setup currentValue=master
+        //PATCH_PY_COMMIT=334e506d
+        // https://docs.renovatebot.com/modules/datasource/git-refs/
+        "# renovate: datasource=(?<datasource>[a-z-]+?)(?: depName=(?<depName>.+?))? packageName=(?<packageName>.+?)(?: currentValue=(?<currentValue>[a-z-]+?))?\\s.+?_COMMIT=(?<currentDigest>.+?)\\s",
         ]
     }
   ]
