@@ -79,7 +79,8 @@ jobs:
           echo "SKIP_ROOTLESS=$(echo '${{ github.event.inputs.skip-rootless || '' }}' | xargs)" >> $GITHUB_ENV
           echo "SKIP_RELEASE=$(echo '${{ github.event.inputs.skip-release || '' }}' | xargs)" >> $GITHUB_ENV
           
-          if [[ "${{ github.event_name }}" == "push" ]]; then
+       
+          if [[ "${{ github.event_name }}" == "push" ]]  || [[ "${{ github.event_name }}" == "pull_request" ]]; then
             echo "Running on push: Simple build without release for device $DEVICE_ID"
             echo "FORCE_BUILD=true" >> $GITHUB_ENV
             echo "SKIP_RELEASE=true" >> $GITHUB_ENV

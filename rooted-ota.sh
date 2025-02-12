@@ -63,9 +63,16 @@ OTA_BASE_URL="https://releases.grapheneos.org"
 
 # renovate: datasource=github-releases packageName=chenxiaolong/avbroot versioning=semver
 AVB_ROOT_VERSION=3.12.0
-
 # renovate: datasource=github-releases packageName=chenxiaolong/Custota versioning=semver-coerced
 CUSTOTA_VERSION=5.6
+# renovate: datasource=git-refs packageName=https://github.com/chenxiaolong/my-avbroot-setup currentValue=master
+PATCH_PY_COMMIT=16636c3
+# renovate: datasource=docker packageName=python
+PYTHON_VERSION=3.13.2-alpine
+# renovate: datasource=github-releases packageName=chenxiaolong/OEMUnlockOnBoot versioning=semver-coerced
+OEMUNLOCKONBOOT_VERSION=1.1
+# renovate: datasource=github-releases packageName=chenxiaolong/afsr versioning=semver
+AFSR_VERSION=1.0.2
 
 CHENXIAOLONG_PK='ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDOe6/tBnO7xZhAWXRj3ApUYgn+XZ0wnQiXM8B7tPgv4'
 
@@ -280,39 +287,69 @@ function downloadAndVerifyFromChenxiaolong() {
 function patchOTAs() {
 
   downloadAvBroot
+  downloadAndVerifyFromChenxiaolong 'afsr' "$AFSR_VERSION"
+  if ! ls ".tmp/custota.zip" >/dev/null 2>&1; then
+    curl --fail -sL "https://github.com/chenxiaolong/Custota/releases/download/v${CUSTOTA_VERSION}/Custota-${CUSTOTA_VERSION}-release.zip" > .tmp/custota.zip
+    curl --fail -sL "https://github.com/chenxiaolong/Custota/releases/download/v${CUSTOTA_VERSION}/Custota-${CUSTOTA_VERSION}-release.zip.sig" > .tmp/custota.zip.sig
+  fi
+  if ! ls ".tmp/oemunlockonboot.zip" >/dev/null 2>&1; then
+    curl --fail -sL "https://github.com/chenxiaolong/OEMUnlockOnBoot/releases/download/v${OEMUNLOCKONBOOT_VERSION}/OEMUnlockOnBoot-${OEMUNLOCKONBOOT_VERSION}-release.zip" > .tmp/oemunlockonboot.zip
+    curl --fail -sL "https://github.com/chenxiaolong/OEMUnlockOnBoot/releases/download/v${OEMUNLOCKONBOOT_VERSION}/OEMUnlockOnBoot-${OEMUNLOCKONBOOT_VERSION}-release.zip.sig" > .tmp/oemunlockonboot.zip.sig
+  fi
+  if ! ls ".tmp/my-avbroot-setup" >/dev/null 2>&1; then
+    git clone https://github.com/chenxiaolong/my-avbroot-setup .tmp/my-avbroot-setup
+    (cd .tmp/my-avbroot-setup && git checkout ${PATCH_PY_COMMIT})
+  fi
+
   base642key
 
   for flavor in "${!POTENTIAL_ASSETS[@]}"; do
     local targetFile=".tmp/${POTENTIAL_ASSETS[$flavor]}"
-    
-    if ls "$targetFile" >/dev/null 2>&1; then 
+
+    if ls "$targetFile" >/dev/null 2>&1; then
       printGreen "File $targetFile already exists locally, not patching."
     else
       local args=()
-      
+
       args+=("--output" "$targetFile")
       args+=("--input" ".tmp/$OTA_TARGET.zip")
-      args+=("--key-avb" "$KEY_AVB")
-      args+=("--key-ota" "$KEY_OTA")
-      args+=("--cert-ota" "$CERT_OTA")
-       if [[ "$flavor" == 'magisk' ]]; then
-         args+=("--magisk" ".tmp/magisk-$MAGISK_VERSION.apk")
-         args+=("--magisk-preinit-device" "$MAGISK_PREINIT_DEVICE")
-       elif [[ "$flavor" == 'rootless' ]]; then
-         args+=("--rootless")
-       fi
-          
+      args+=("--sign-key-avb" "$KEY_AVB")
+      args+=("--sign-key-ota" "$KEY_OTA")
+      args+=("--sign-cert-ota" "$CERT_OTA")
+      if [[ "$flavor" == 'magisk' ]]; then
+        args+=("--patch-arg=--magisk" "--patch-arg" ".tmp/magisk-$MAGISK_VERSION.apk")
+        args+=("--patch-arg=--magisk-preinit-device" "--patch-arg" "$MAGISK_PREINIT_DEVICE")
+      fi
+
       # If env vars not set, passphrases will be queried interactively
       if [ -v PASSPHRASE_AVB ]; then
         args+=("--pass-avb-env-var" "PASSPHRASE_AVB")
       fi
-    
+
       if [ -v PASSPHRASE_OTA ]; then
         args+=("--pass-ota-env-var" "PASSPHRASE_OTA")
       fi
-        
-      .tmp/avbroot ota patch "${args[@]}"
+
+      args+=("--module-custota" ".tmp/custota.zip")
+      args+=("--module-oemunlockonboot" ".tmp/oemunlockonboot.zip")
+      # We patch it later if necessary
+      args+=("--skip-custota-tool")
+
+      # We need to add .tmp to PATH, but we can't use $PATH: because this would be the PATH of the host not the container
+      # Python image is designed to run as root, so chown the files it creates back at the end
+      # ... room for improvement 😐️
+      docker run --rm -v "$PWD/.tmp:/app/.tmp" -w /app \
+        -e PATH='/bin:/usr/local/bin:/sbin:/usr/bin/:/app/.tmp' \
+        -e PASSPHRASE_AVB="$PASSPHRASE_AVB" -e PASSPHRASE_OTA="$PASSPHRASE_OTA" \
+        python:${PYTHON_VERSION} sh -c \
+          "apk add openssh && \
+           pip install -r .tmp/my-avbroot-setup/requirements.txt && \
+           python .tmp/my-avbroot-setup/patch.py ${args[*]} && \
+           chown -R $(id -u):$(id -g) .tmp"
+    
+       printGreen "Finished patching file ${targetFile}"
     fi
+    
   done
 }
 
