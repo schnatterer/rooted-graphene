@@ -1,0 +1,7 @@
+{
+  "version": 2,
+  "full": {
+    "location_ota": "https://github.com/schnatterer/rooted-graphene/releases/download/2025020500/caiman-2025020500-15bcc6e-rootless-test.zip",
+    "location_csig": "https://github.com/schnatterer/rooted-graphene/releases/download/2025020500/caiman-2025020500-15bcc6e-rootless-test.zip.csig"
+  }
+}
