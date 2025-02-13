@@ -179,7 +179,7 @@ function checkBuildNecessary() {
       # Save some storage by not building and uploading every new commit as asset
       selectedAsset=$(echo "${response}" | jq -r --arg assetPrefix "${DEVICE_ID}-${OTA_VERSION}" \
         '.assets[] | select(.name | startswith($assetPrefix)) | .name' \
-          | grep "${flavor}")
+          | grep "${flavor}" || true)
   
       if [[ -n "${selectedAsset}" ]] && [[ "$FORCE_BUILD" != 'true' ]] && [[ "$UPLOAD_TEST_OTA" != 'true' ]]; then
         printGreen "Skipping build of asset name '$POTENTIAL_ASSET_NAME'. Because this flavor already is released with a different commit." \
