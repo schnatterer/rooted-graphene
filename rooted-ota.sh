@@ -420,8 +420,6 @@ function createOtaServerData() {
     args+=("--output" "${targetFile}.csig")
     args+=("--key" "$KEY_OTA")
     args+=("--cert" "$CERT_OTA")
-    # Keep version 1 for a while in order to stay downward compatible
-    args+=("--csig-version" '1')
   
     # If env vars not set, passphrases will be queried interactively
     if [ -v PASSPHRASE_OTA ]; then

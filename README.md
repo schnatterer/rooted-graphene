@@ -1,8 +1,9 @@
 rooted-graphene
 ===
 
-GrapheneOS over the air updates (OTAs) patched with Magisk using [avbroot](https://github.com/chenxiaolong/avbroot) allowing for AVB and locked bootloader *and* root access.
-Provides its own OTA server for [Custota](https://github.com/chenxiaolong/Custota) magisk module.
+GrapheneOS over the air updates (OTAs) patched with Magisk using [avbroot](https://github.com/chenxiaolong/avbroot) allowing for AVB and locked bootloader *and* root access.  
+Can be upgraded over the air using [Custota](https://github.com/chenxiaolong/Custota) and its own OTA server.  
+Allows for switching between magisk and rootless via OTA upgrades.
 
 > ⚠️ OS and root work in general. However, zygisk does not (and [likely never will](https://github.com/topjohnwu/Magisk/pull/7606)) work, leading to magisk being easily discovered by other apps and lots of banking apps not working.  
  See [bellow](#using-other-rooting-mechanisms) for alternatives.
@@ -15,6 +16,11 @@ See [.github/workflows/release-multiple.yaml](.github/workflows/release-multiple
 
 These are only changes related to rooted-graphene, not GrapheneOS itself.  
 See [grapheneos.org/releases](https://grapheneos.org/releases) for that.
+
+### Unreleased
+* Switch from custota signature file version 1 to 2 (introduced with [custota 5](https://github.com/chenxiaolong/Custota/blob/v5.0/CHANGELOG.md) in october 2024)
+* If you're using custoa magisk module version < 5, please upgrade.  
+  Even better: Delete custota magisk module, because it is now packaged in the OTA.
 
 ### 2025021100
 * Start shipping custota app with OTA
@@ -153,15 +159,17 @@ Alternatively you could do updates manually via `adb sideload`:
 * `adb sideload xyz.zip`
 * See also [here](https://github.com/chenxiaolong/avbroot#updates).
 
-## Remove root / rootless
+## Switching between root and rootless
 
-In order to remove root, you can change to the "rootless" flavor.
+To remove root, you can change to the "rootless" flavor.
 
 To do so, set the following URL in custota: https://schnatterer.github.io/rooted-graphene/rootless/
+And then upgrade.  
+(if custota should tell you that you're on the latest version, you can force an upgrade by long pressing `Version` and 
+then selecting `Allow reinstall`).
 
-Note that you can update to this flavor to disable root. However, after the upgrade, custota will no longer work. For re-enabling root, you will have to use `adb sideload`.
-
-In the future we might find a way to include an updater to the OTA, so rooting will also be possible via custota.
+If you want to gain root again, just switch back to this URL in custota: https://schnatterer.github.io/rooted-graphene/magisk/
+And then upgrade.
 
 ## Script
 
