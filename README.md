@@ -240,13 +240,11 @@ SKIP_CLEANUP=true DEVICE_ID=oriole MAGISK_PREINIT_DEVICE='metadata' bash -c '. r
 
 # Test only releasing
   GITHUB_TOKEN=gh... \
-RELEASE_ID='' \
-ASSET_EXISTS=false \
-POTENTIAL_RELEASE_NAME=test \
-POTENTIAL_ASSET_NAME=test.zip \
+ DEBUG=true \
 GITHUB_REPO=schnatterer/rooted-graphene \
+OTA_VERSION=2025021100 \
+RELEASE_ID='' \
   bash -c '. rooted-ota.sh && releaseOta'
-
 # Test only GH pages deployment
 GITHUB_REPO=schnatterer/rooted-graphene \
 DEVICE_ID=oriole \
