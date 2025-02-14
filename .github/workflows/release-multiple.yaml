@@ -11,11 +11,6 @@ jobs:
   # So run the whole matrix as cron. One of the first checks is if there is a need for release at all.
   build-devices:
     strategy:
-      # When run concurrently, 422 might occur on new releases.
-      # To completely avoid those, a retry mechanisms would be necessary.
-      # It might be easier to build a loop into the bash script.
-      # For now, make the action run sequentially
-      max-parallel: 1
       matrix:
         include:
           - device-id: caiman # Pixel 9 Pro

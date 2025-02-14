@@ -379,15 +379,16 @@ function releaseOta() {
   local response changelog
   if [[ -z "$RELEASE_ID" ]]; then
     
-    changelog=$(curl -X POST -H "Authorization: token $GITHUB_TOKEN" \
+    changelog=$(curl -sL -X POST -H "Authorization: token $GITHUB_TOKEN" \
       -d "{
               \"tag_name\": \"$OTA_VERSION\",
               \"target_commitish\": \"main\"
             }" \
       "https://api.github.com/repos/$GITHUB_REPO/releases/generate-notes" | jq -r '.body // empty')
-    changelog="Update to [GrapheneOS ${OTA_VERSION}](https://grapheneos.org/releases#${OTA_VERSION}).\n\n${changelog}"
+    # Replace \n by \\n to keep them as chars
+    changelog="Update to [GrapheneOS ${OTA_VERSION}](https://grapheneos.org/releases#${OTA_VERSION}).\n\n$(echo "${changelog}" | sed ':a;N;$!ba;s/\n/\\n/g')"
     
-    response=$(curl --fail -X POST -H "Authorization: token $GITHUB_TOKEN" \
+    response=$(curl -sL -X POST -H "Authorization: token $GITHUB_TOKEN" \
       -d "{
               \"tag_name\": \"$OTA_VERSION\",
               \"target_commitish\": \"main\",
@@ -395,7 +396,27 @@ function releaseOta() {
               \"body\": \"${changelog}\"
             }" \
       "https://api.github.com/repos/$GITHUB_REPO/releases")
-    RELEASE_ID=$(echo "$response" | jq -r '.id')
+    RELEASE_ID=$(echo "${response}" | jq -r '.id // empty')
+    if [[ -n "${RELEASE_ID}" ]]; then
+      printGreen "Release created successfully with ID: ${RELEASE_ID}"
+    elif echo "${response}" | jq -e '.status == "422"' > /dev/null; then
+      # In case release has been created in the meantime (e.g. matrix job for multiple devices concurrently)
+      RELEASE_ID=$(curl -sL \
+        -H "Authorization: token $GITHUB_TOKEN" \
+        -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/${GITHUB_REPO}/releases" | \
+            jq -r --arg release_tag "${OTA_VERSION}" '.[] | select(.tag_name == $release_tag) | .id // empty')
+      if [[ -n "${RELEASE_ID}" ]]; then
+        printGreen "Cannot create release but found existing release for ${OTA_VERSION}. ID=$RELEASE_ID"
+      else
+        printRed "Cannot create release for ${OTA_VERSION} because it seems to exist but still cannot find ID."
+        exit 1
+      fi
+    else
+      errors=$(echo "${response}" | jq -r '.errors')
+      printRed "Failed to create release for ${OTA_VERSION}. Errors: ${errors}"
+      exit 1
+    fi
   fi
 
   for flavor in "${!POTENTIAL_ASSETS[@]}"; do
