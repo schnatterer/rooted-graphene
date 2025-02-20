@@ -10,7 +10,16 @@ Allows for switching between magisk and rootless via OTA upgrades.
 
 ## Supported devices
 
-See [.github/workflows/release-multiple.yaml](.github/workflows/release-multiple.yaml)
+* Pixel 9 Pro
+* Pixel 6
+
+All other devices have been discontinued because the amount of GitHub actions minutes required for maintaining that 
+many devices exceed my spending limit.  
+
+If you have the [Magisk preinit string](#magisk-preinit-strings) (see [.github/workflows/release-multiple.yaml](.github/workflows/release-multiple.yaml)) for your device, you can easily fork this repo and build your own OTAs.
+
+
+![image](https://github.com/user-attachments/assets/11cf8fe9-b846-4979-8d7c-723408681354)
 
 ## Notable changelog
 
@@ -18,6 +27,10 @@ These are only changes related to rooted-graphene, not GrapheneOS itself.
 See [grapheneos.org/releases](https://grapheneos.org/releases) for that.
 
 ### Unreleased
+
+* Discontinued all devices but Pixel 6 and Pixel 9 Pro, because the amount of GitHub actions minutes required for 
+  maintaining that many devices exceed my spending limit.  
+  Please fork this repo and build your own OTAs.
 * Switch from custota signature file version 1 to 2 (introduced with [custota 5](https://github.com/chenxiaolong/Custota/blob/v5.0/CHANGELOG.md) in october 2024)
 * If you're using custoa magisk module version < 5, please upgrade.  
   Even better: Delete custota magisk module, because it is now packaged in the OTA.
