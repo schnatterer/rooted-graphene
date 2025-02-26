@@ -35,12 +35,22 @@ OTA_VERSION=${OTA_VERSION:-'latest'}
 # Breaking changes in magisk might need to be adapted in new avbroot version
 # Find latest magisk version here: https://github.com/topjohnwu/Magisk/releases, or:
 # curl --fail -sL -I -o /dev/null -w '%{url_effective}' https://github.com/topjohnwu/Magisk/releases/latest | sed 's/.*\/tag\///;'
-MAGISK_VERSION=${MAGISK_VERSION:-'v28.0'}
+# renovate: datasource=github-releases packageName=topjohnwu/Magisk versioning=semver-coerced
+DEFAULT_MAGISK_VERSION=v28.1
+MAGISK_VERSION=${MAGISK_VERSION:-${DEFAULT_MAGISK_VERSION}}
 
 SKIP_CLEANUP=${SKIP_CLEANUP:-''}
 
 # Set asset released by this script to latest version, even when OTA_VERSION already exists for this device
 FORCE_OTA_SERVER_UPLOAD=${FORCE_OTA_SERVER_UPLOAD:-'false'}
+# Forces the artifacts to be built (and uploaded to a release)
+# even it a release already contains the combination of device and flavor.
+# This will lead to multiple artifacts with different commits on the release (that are not linked in the OTA server and thus are likely never used).
+# However, except for test builds, we want the changes to be rolled out with new version.
+# So these artifacts are just a waste of storage resources. Example
+# shiba-2025020500-3e0add9-rootless.zip
+# shiba-2025020500-6718632-rootless.zip
+FORCE_BUILD=${FORCE_BUILD:-'false'}
 # Skip setting asset released by this script to latest version, even when OTA_VERSION is latest for this device
 # Takes precedence over FORCE_OTA_SERVER_UPLOAD
 SKIP_OTA_SERVER_UPLOAD=${SKIP_OTA_SERVER_UPLOAD:-'false'}
@@ -48,11 +58,21 @@ SKIP_OTA_SERVER_UPLOAD=${SKIP_OTA_SERVER_UPLOAD:-'false'}
 UPLOAD_TEST_OTA=${UPLOAD_TEST_OTA:-false}
 
 OTA_CHANNEL=${OTA_CHANNEL:-stable} # Alternative: 'alpha'
+NO_COLOR=${NO_COLOR:-''}
 OTA_BASE_URL="https://releases.grapheneos.org"
 
-AVB_ROOT_VERSION=3.9.0
-
-CUSTOTA_VERSION=5.2
+# renovate: datasource=github-releases packageName=chenxiaolong/avbroot versioning=semver
+AVB_ROOT_VERSION=3.12.0
+# renovate: datasource=github-releases packageName=chenxiaolong/Custota versioning=semver-coerced
+CUSTOTA_VERSION=5.6
+# renovate: datasource=git-refs packageName=https://github.com/chenxiaolong/my-avbroot-setup currentValue=master
+PATCH_PY_COMMIT=16636c3
+# renovate: datasource=docker packageName=python
+PYTHON_VERSION=3.13.2-alpine
+# renovate: datasource=github-releases packageName=chenxiaolong/OEMUnlockOnBoot versioning=semver-coerced
+OEMUNLOCKONBOOT_VERSION=1.1
+# renovate: datasource=github-releases packageName=chenxiaolong/afsr versioning=semver
+AFSR_VERSION=1.0.2
 
 CHENXIAOLONG_PK='ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDOe6/tBnO7xZhAWXRj3ApUYgn+XZ0wnQiXM8B7tPgv4'
 
@@ -104,16 +124,16 @@ function createRootedOta() {
 }
 
 function cleanup() {
-  echo "Cleaning up..."
+  print "Cleaning up..."
   rm -rf .tmp
   unset KEY_AVB_BASE64 KEY_OTA_BASE64 CERT_OTA_BASE64
-  echo "Cleanup complete."
+  print "Cleanup complete."
 }
 
 function checkBuildNecessary() {
   local currentCommit
   currentCommit=$(git rev-parse --short HEAD)
-    
+  POTENTIAL_ASSETS=()
     
   if [[ -n "$MAGISK_PREINIT_DEVICE" ]]; then 
     # e.g. oriole-2023121200-magisk-v26.4-4647f74-dirty.zip
@@ -131,9 +151,9 @@ function checkBuildNecessary() {
   RELEASE_ID=''
   local response
 
-  if [[ -z "$GITHUB_REPO" ]]; then echo "Env Var GITHUB_REPO not set, skipping check for existing release" && return; fi
+  if [[ -z "$GITHUB_REPO" ]]; then print "Env Var GITHUB_REPO not set, skipping check for existing release" && return; fi
 
-  echo "Potential release: ${OTA_VERSION}"
+  print "Potential release: ${OTA_VERSION}"
 
   local params=()
   local url="https://api.github.com/repos/${GITHUB_REPO}/releases"
@@ -149,20 +169,24 @@ function checkBuildNecessary() {
   )
 
   if [[ -n ${response} ]]; then
-    RELEASE_ID=$(echo "$response" | jq -r '.id')
-    echo "Release ${OTA_VERSION} exists. ID=$RELEASE_ID"
+    RELEASE_ID=$(echo "${response}" | jq -r '.id')
+    print "Release ${OTA_VERSION} exists. ID=$RELEASE_ID"
     
     for flavor in "${!POTENTIAL_ASSETS[@]}"; do
-      local POTENTIAL_ASSET_NAME="${POTENTIAL_ASSETS[$flavor]}"
-      echo "Checking if asset exists ${POTENTIAL_ASSET_NAME}"
+      local selectedAsset POTENTIAL_ASSET_NAME="${POTENTIAL_ASSETS[$flavor]}"
+      print "Checking if asset exists ${POTENTIAL_ASSET_NAME}"
       
-      selected_asset=$(echo "$response" | jq -r --arg assetName "${POTENTIAL_ASSET_NAME}" '.assets[] | select(.name == $assetName)')
+      # Save some storage by not building and uploading every new commit as asset
+      selectedAsset=$(echo "${response}" | jq -r --arg assetPrefix "${DEVICE_ID}-${OTA_VERSION}" \
+        '.assets[] | select(.name | startswith($assetPrefix)) | .name' \
+          | grep "${flavor}" || true)
   
-      if [ -n "$selected_asset" ]; then
-        printGreen "Asset with name '$POTENTIAL_ASSET_NAME' already released. Not creating it."
+      if [[ -n "${selectedAsset}" ]] && [[ "$FORCE_BUILD" != 'true' ]] && [[ "$UPLOAD_TEST_OTA" != 'true' ]]; then
+        printGreen "Skipping build of asset name '$POTENTIAL_ASSET_NAME'. Because this flavor already is released with a different commit." \
+          "Set FORCE_BUILD or UPLOAD_TEST_OTA to force. Assets found on release: ${selectedAsset//$'\n'/ }"
         unset "POTENTIAL_ASSETS[$flavor]"
       else
-        echo "No asset found with name '$POTENTIAL_ASSET_NAME'."
+        print "No asset found with name '$POTENTIAL_ASSET_NAME'."
       fi
     done
     
@@ -171,7 +195,7 @@ function checkBuildNecessary() {
       exit 0
     fi
   else
-    echo "Release ${OTA_VERSION} does not exist."
+    print "Release ${OTA_VERSION} does not exist."
   fi
 }
 
@@ -187,13 +211,14 @@ function checkMandatoryVariable() {
 }
 
 function createAssetSuffix() {
-  if [[ -n "$(git status --porcelain --untracked-files=no)" ]]; then
-    echo '-dirty'
-  elif [[ "${UPLOAD_TEST_OTA}" == 'true' ]]; then
-    echo '-test'
-  else
-    echo ''
+  local suffix=''
+  if [[ "${UPLOAD_TEST_OTA}" == 'true' ]]; then
+    suffix+='-test'
   fi
+  if [[ -n "$(git status --porcelain --untracked-files=no)" ]]; then
+    suffix+='-dirty'
+  fi
+  echo "$suffix"
 }
 
 function downloadAndroidDependencies() {
@@ -215,7 +240,7 @@ function findLatestVersion() {
   if [[ "$MAGISK_VERSION" == 'latest' ]]; then
     MAGISK_VERSION=$(curl --fail -sL -I -o /dev/null -w '%{url_effective}' https://github.com/topjohnwu/Magisk/releases/latest | sed 's/.*\/tag\///;')
   fi
-  echo "Magisk version: $MAGISK_VERSION"
+  print "Magisk version: $MAGISK_VERSION"
 
   # Search for a new version grapheneos.
   # e.g. https://releases.grapheneos.org/shiba-stable
@@ -227,7 +252,7 @@ function findLatestVersion() {
   OTA_TARGET="$DEVICE_ID-$GRAPHENE_TYPE-$OTA_VERSION"
   OTA_URL="$OTA_BASE_URL/$OTA_TARGET.zip"
   # e.g.  shiba-ota_update-2023121200
-  echo "OTA target: $OTA_TARGET; OTA URL: $OTA_URL"
+  print "OTA target: $OTA_TARGET; OTA URL: $OTA_URL"
 }
 
 function downloadAvBroot() {
@@ -262,39 +287,69 @@ function downloadAndVerifyFromChenxiaolong() {
 function patchOTAs() {
 
   downloadAvBroot
+  downloadAndVerifyFromChenxiaolong 'afsr' "$AFSR_VERSION"
+  if ! ls ".tmp/custota.zip" >/dev/null 2>&1; then
+    curl --fail -sL "https://github.com/chenxiaolong/Custota/releases/download/v${CUSTOTA_VERSION}/Custota-${CUSTOTA_VERSION}-release.zip" > .tmp/custota.zip
+    curl --fail -sL "https://github.com/chenxiaolong/Custota/releases/download/v${CUSTOTA_VERSION}/Custota-${CUSTOTA_VERSION}-release.zip.sig" > .tmp/custota.zip.sig
+  fi
+  if ! ls ".tmp/oemunlockonboot.zip" >/dev/null 2>&1; then
+    curl --fail -sL "https://github.com/chenxiaolong/OEMUnlockOnBoot/releases/download/v${OEMUNLOCKONBOOT_VERSION}/OEMUnlockOnBoot-${OEMUNLOCKONBOOT_VERSION}-release.zip" > .tmp/oemunlockonboot.zip
+    curl --fail -sL "https://github.com/chenxiaolong/OEMUnlockOnBoot/releases/download/v${OEMUNLOCKONBOOT_VERSION}/OEMUnlockOnBoot-${OEMUNLOCKONBOOT_VERSION}-release.zip.sig" > .tmp/oemunlockonboot.zip.sig
+  fi
+  if ! ls ".tmp/my-avbroot-setup" >/dev/null 2>&1; then
+    git clone https://github.com/chenxiaolong/my-avbroot-setup .tmp/my-avbroot-setup
+    (cd .tmp/my-avbroot-setup && git checkout ${PATCH_PY_COMMIT})
+  fi
+
   base642key
 
   for flavor in "${!POTENTIAL_ASSETS[@]}"; do
     local targetFile=".tmp/${POTENTIAL_ASSETS[$flavor]}"
-    
-    if ls "$targetFile" >/dev/null 2>&1; then 
+
+    if ls "$targetFile" >/dev/null 2>&1; then
       printGreen "File $targetFile already exists locally, not patching."
     else
       local args=()
-      
+
       args+=("--output" "$targetFile")
       args+=("--input" ".tmp/$OTA_TARGET.zip")
-      args+=("--key-avb" "$KEY_AVB")
-      args+=("--key-ota" "$KEY_OTA")
-      args+=("--cert-ota" "$CERT_OTA")
-       if [[ "$flavor" == 'magisk' ]]; then
-         args+=("--magisk" ".tmp/magisk-$MAGISK_VERSION.apk")
-         args+=("--magisk-preinit-device" "$MAGISK_PREINIT_DEVICE")
-       elif [[ "$flavor" == 'rootless' ]]; then
-         args+=("--rootless")
-       fi
-          
+      args+=("--sign-key-avb" "$KEY_AVB")
+      args+=("--sign-key-ota" "$KEY_OTA")
+      args+=("--sign-cert-ota" "$CERT_OTA")
+      if [[ "$flavor" == 'magisk' ]]; then
+        args+=("--patch-arg=--magisk" "--patch-arg" ".tmp/magisk-$MAGISK_VERSION.apk")
+        args+=("--patch-arg=--magisk-preinit-device" "--patch-arg" "$MAGISK_PREINIT_DEVICE")
+      fi
+
       # If env vars not set, passphrases will be queried interactively
       if [ -v PASSPHRASE_AVB ]; then
         args+=("--pass-avb-env-var" "PASSPHRASE_AVB")
       fi
-    
+
       if [ -v PASSPHRASE_OTA ]; then
         args+=("--pass-ota-env-var" "PASSPHRASE_OTA")
       fi
-        
-      .tmp/avbroot ota patch "${args[@]}"
+
+      args+=("--module-custota" ".tmp/custota.zip")
+      args+=("--module-oemunlockonboot" ".tmp/oemunlockonboot.zip")
+      # We patch it later if necessary
+      args+=("--skip-custota-tool")
+
+      # We need to add .tmp to PATH, but we can't use $PATH: because this would be the PATH of the host not the container
+      # Python image is designed to run as root, so chown the files it creates back at the end
+      # ... room for improvement 😐️
+      docker run --rm -v "$PWD/.tmp:/app/.tmp" -w /app \
+        -e PATH='/bin:/usr/local/bin:/sbin:/usr/bin/:/app/.tmp' \
+        -e PASSPHRASE_AVB="$PASSPHRASE_AVB" -e PASSPHRASE_OTA="$PASSPHRASE_OTA" \
+        python:${PYTHON_VERSION} sh -c \
+          "apk add openssh && \
+           pip install -r .tmp/my-avbroot-setup/requirements.txt && \
+           python .tmp/my-avbroot-setup/patch.py ${args[*]} && \
+           chown -R $(id -u):$(id -g) .tmp"
+    
+       printGreen "Finished patching file ${targetFile}"
     fi
+    
   done
 }
 
@@ -321,17 +376,47 @@ function base642key() {
 function releaseOta() {
   checkMandatoryVariable 'GITHUB_REPO' 'GITHUB_TOKEN'
 
-  local response
+  local response changelog
   if [[ -z "$RELEASE_ID" ]]; then
-    response=$(curl --fail -X POST -H "Authorization: token $GITHUB_TOKEN" \
+    
+    changelog=$(curl -sL -X POST -H "Authorization: token $GITHUB_TOKEN" \
+      -d "{
+              \"tag_name\": \"$OTA_VERSION\",
+              \"target_commitish\": \"main\"
+            }" \
+      "https://api.github.com/repos/$GITHUB_REPO/releases/generate-notes" | jq -r '.body // empty')
+    # Replace \n by \\n to keep them as chars
+    changelog="Update to [GrapheneOS ${OTA_VERSION}](https://grapheneos.org/releases#${OTA_VERSION}).\n\n$(echo "${changelog}" | sed ':a;N;$!ba;s/\n/\\n/g')"
+    
+    response=$(curl -sL -X POST -H "Authorization: token $GITHUB_TOKEN" \
       -d "{
               \"tag_name\": \"$OTA_VERSION\",
               \"target_commitish\": \"main\",
               \"name\": \"$OTA_VERSION\",
-              \"body\": \"See [Changelog](https://grapheneos.org/releases#$OTA_VERSION).\"
+              \"body\": \"${changelog}\"
             }" \
       "https://api.github.com/repos/$GITHUB_REPO/releases")
-    RELEASE_ID=$(echo "$response" | jq -r '.id')
+    RELEASE_ID=$(echo "${response}" | jq -r '.id // empty')
+    if [[ -n "${RELEASE_ID}" ]]; then
+      printGreen "Release created successfully with ID: ${RELEASE_ID}"
+    elif echo "${response}" | jq -e '.status == "422"' > /dev/null; then
+      # In case release has been created in the meantime (e.g. matrix job for multiple devices concurrently)
+      RELEASE_ID=$(curl -sL \
+        -H "Authorization: token $GITHUB_TOKEN" \
+        -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/${GITHUB_REPO}/releases" | \
+            jq -r --arg release_tag "${OTA_VERSION}" '.[] | select(.tag_name == $release_tag) | .id // empty')
+      if [[ -n "${RELEASE_ID}" ]]; then
+        printGreen "Cannot create release but found existing release for ${OTA_VERSION}. ID=$RELEASE_ID"
+      else
+        printRed "Cannot create release for ${OTA_VERSION} because it seems to exist but still cannot find ID."
+        exit 1
+      fi
+    else
+      errors=$(echo "${response}" | jq -r '.errors')
+      printRed "Failed to create release for ${OTA_VERSION}. Errors: ${errors}"
+      exit 1
+    fi
   fi
 
   for flavor in "${!POTENTIAL_ASSETS[@]}"; do
@@ -365,8 +450,6 @@ function createOtaServerData() {
     args+=("--output" "${targetFile}.csig")
     args+=("--key" "$KEY_OTA")
     args+=("--cert" "$CERT_OTA")
-    # Keep version 1 for a while in order to stay downward compatible
-    args+=("--csig-version" '1')
   
     # If env vars not set, passphrases will be queried interactively
     if [ -v PASSPHRASE_OTA ]; then
@@ -440,10 +523,22 @@ function uploadOtaServerData() {
   git checkout "$current_branch"
 }
 
+function print() {
+  echo -e "$(date '+%Y-%m-%d %H:%M:%S'): $*"
+}
+
 function printGreen() {
-    echo -e "\e[32m$1\e[0m"
+  if [[ -z "${NO_COLOR}" ]]; then
+    echo -e "\e[32m$(date '+%Y-%m-%d %H:%M:%S'): $*\e[0m"
+  else
+      print "$@"
+  fi
 }
 
 function printRed() {
-    echo -e "\e[31m$1\e[0m"
+  if [[ -z "${NO_COLOR}" ]]; then
+   echo -e "\e[31m$(date '+%Y-%m-%d %H:%M:%S'): $*\e[0m"
+  else
+      print "$@"
+  fi
 }

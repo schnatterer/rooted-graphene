@@ -1,14 +1,56 @@
 rooted-graphene
 ===
 
-
-GrapheneOS over the air updates (OTAs) patched with Magisk using [avbroot](https://github.com/chenxiaolong/avbroot) allowing for AVB and locked bootloader *and* root access.
-Provides its own OTA server for [Custota](https://github.com/chenxiaolong/Custota) magisk module.
+GrapheneOS over the air updates (OTAs) patched with Magisk using [avbroot](https://github.com/chenxiaolong/avbroot) allowing for AVB and locked bootloader *and* root access.  
+Can be upgraded over the air using [Custota](https://github.com/chenxiaolong/Custota) and its own OTA server.  
+Allows for switching between magisk and rootless via OTA upgrades.
 
 > ⚠️ OS and root work in general. However, zygisk does not (and [likely never will](https://github.com/topjohnwu/Magisk/pull/7606)) work, leading to magisk being easily discovered by other apps and lots of banking apps not working.  
  See [bellow](#using-other-rooting-mechanisms) for alternatives.
 
-## Usage
+## Supported devices
+
+* Pixel 9 Pro
+* Pixel 6
+
+All other devices have been discontinued because the amount of GitHub actions minutes required for maintaining that 
+many devices exceed my spending limit.  
+
+If you have the [Magisk preinit string](#magisk-preinit-strings) (see [.github/workflows/release-multiple.yaml](.github/workflows/release-multiple.yaml)) for your device, you can easily fork this repo and build your own OTAs.
+
+
+![image](https://github.com/user-attachments/assets/11cf8fe9-b846-4979-8d7c-723408681354)
+
+## Notable changelog
+
+These are only changes related to rooted-graphene, not GrapheneOS itself.  
+See [grapheneos.org/releases](https://grapheneos.org/releases) for that.
+
+### Unreleased
+
+* Discontinued all devices but Pixel 6 and Pixel 9 Pro, because the amount of GitHub actions minutes required for 
+  maintaining that many devices exceed my spending limit.  
+  Please fork this repo and build your own OTAs.
+* Switch from custota signature file version 1 to 2 (introduced with [custota 5](https://github.com/chenxiaolong/Custota/blob/v5.0/CHANGELOG.md) in october 2024)
+* If you're using custoa magisk module version < 5, please upgrade.  
+  Even better: Delete custota magisk module, because it is now packaged in the OTA.
+
+### 2025021100
+* Start shipping custota app with OTA
+* This allows for OTA updates even when rootless and relieves you of the burden to keep the magisk module up to date.  
+  Starting with the next version, this will allow you to switch root and off by installing OTA updates!
+* In the `-magisk` flavor of rooted-graphene, the custota magisk module should be automatically disabled 
+  on start. You can safely remove it. Custota is now a system app.
+* In the `-rootless` flavor the custota should be new, so no problems.  
+  Except when you had it installed as magisk module before (using the `-magisk` flavor).  
+  Then you should `adb sideload` the  `-magisk` first. Then custota should work as a system app.
+  Then you should be able to switch to `-rootless` with custota working.
+  Here are some troubleshooting tipps.
+  * test, if an upgrading works by long pressing `Version` in custota and then selecting `Allow reinstall`.  
+    This way you can also switch from `-magisk` to `-rootless` (and back if everything works as planned).
+  * you might have to change ownership or delete these files:
+    * `/sdcard/Android/data/com.chiller3.custota/`
+    * `/data/ota_packagecare_map.pb`
 
 ## Initial installation of OS
 
@@ -22,15 +64,29 @@ Provides its own OTA server for [Custota](https://github.com/chenxiaolong/Custot
 
 #### Install GrapheneOS
 
+##### Web Installer
+
+Using the web installier is easier, but will always install the latest version. 
+So it's not possible to verify if OTA upgrades work right away.
+
+Use the [web installer](https://grapheneos.org/install/web) to install GrapheneOS:
+* Write down the installed version, e.g. `Downloaded caiman-install-2024123000.zip release`.
+* Stop at `Locking the bootloader` and close the browser. 
+  We'll lock the bootloader later!
+
+##### Manual install
+
+Alternative method to Web installer.
+
 Download [**factory image**](https://grapheneos.org/releases) and follow the [official instructions](https://grapheneos.org/install/cli)  to install GrapheneOS.
 
-TLDR: 
+TLDR:
 
 * Enable OEM unlocking
 * Obtain latest `fastboot`
 * Unlock Bootloader:
   Enable usb debugging and execute `adb reboot bootloader`, or
-      > The easiest approach is to reboot the device and begin holding the volume down button until it boots up into the bootloader interface.
+  > The easiest approach is to reboot the device and begin holding the volume down button until it boots up into the bootloader interface.
    ```shell
    fastboot flashing unlock
    ```
@@ -44,7 +100,11 @@ TLDR:
 
 #### Patch GrapheneOS with OTAs from this image
 
+Once GrapheneOS is installed
+
 * Download the [OTA from releases](https://github.com/schnatterer/rooted-graphene/releases/) with **the same version** that you just installed. 
+* Obtain latest `fastboot`
+* Install [avbroot](https://github.com/chenxiaolong/avbroot)
 * Extract the partition images from the patched OTA that are different from the original.
     ```bash
     avbroot ota extract \
@@ -93,34 +153,36 @@ TLDR:
     fastboot flashing lock
     ```
 * Confirm by pressing volume down and then power. Then reboot.
-* Remember: **Do not uncheck `OEM unlocking`!**  
-  That is, in Graphene's startup wizard, leave this box unticked 👇️
-  <img src="https://github.com/schnatterer/rooted-graphene/assets/1824962/6ef90b46-2070-4d08-80d4-5f4a0e749cbe" width="216" height="480" alt="Screenshot of GrapheneOS recommending to lock">
-
+* Remember: **Do not uncheck `OEM unlocking`!** (to avoid [hard-bricking](https://github.com/chenxiaolong/avbroot/blob/v3.12.0/README.md#warnings-and-caveats))  
+  That is, in Graphene's startup wizard, leave this box unticked 👇️  
+  <img src="https://github.com/schnatterer/rooted-graphene/assets/1824962/6ef90b46-2070-4d08-80d4-5f4a0e749cbe" width="216" height="480" alt="Screenshot of GrapheneOS recommending to lock">  
+  Note: The OTA contains [OEMUnlockOnBoot](https://github.com/chenxiaolong/OEMUnlockOnBoot), so OEM locking should be impossible.  
+  Still, better safe than sorry, keep it unlocked.
 
 #### Set up OTA updates
 
 * [Disable system updater app](https://github.com/chenxiaolong/avbroot#ota-updates).
-* Use the [Custota](https://github.com/chenxiaolong/Custota) magisk module.
-  * To do so, download and install the Custota module in magsik and reboot.
-  * Open Custota and set the OTA server URL to point to this OTA server:  https://schnatterer.github.io/rooted-graphene/magisk
-* Alternatively you could do updates manually via `adb sideload`:
-  * reboot the device and begin holding the volume down button until it boots up into the bootloader interface
-  * using volume buttons, toggle to recovery. Confirm by pressing power button
-  * If the screen is stuck at a `No command` message, press the volume up button once while holding down the power button.
-  * using volume buttons, toggle to `Apply update from ADB`. Confirm by pressing power button
-  * `adb sideload xyz.zip`
-  * See also [here](https://github.com/chenxiaolong/avbroot#updates).
+* Open Custota app and set the OTA server URL to point to this OTA server: https://schnatterer.github.io/rooted-graphene/magisk
 
-## Remove root / rootless
+Alternatively you could do updates manually via `adb sideload`:
+* reboot the device and begin holding the volume down button until it boots up into the bootloader interface
+* using volume buttons, toggle to recovery. Confirm by pressing power button
+* If the screen is stuck at a `No command` message, press the volume up button once while holding down the power button.
+* using volume buttons, toggle to `Apply update from ADB`. Confirm by pressing power button
+* `adb sideload xyz.zip`
+* See also [here](https://github.com/chenxiaolong/avbroot#updates).
 
-In order to remove root, you can change to the "rootless" flavor.
+## Switching between root and rootless
+
+To remove root, you can change to the "rootless" flavor.
 
 To do so, set the following URL in custota: https://schnatterer.github.io/rooted-graphene/rootless/
+And then upgrade.  
+(if custota should tell you that you're on the latest version, you can force an upgrade by long pressing `Version` and 
+then selecting `Allow reinstall`).
 
-Note that you can update to this flavor to disable root. However, after the upgrade, custota will no longer work. For re-enabling root, you will have to use `adb sideload`.
-
-In the future we might find a way to include an updater to the OTA, so rooting will also be possible via custota.
+If you want to gain root again, just switch back to this URL in custota: https://schnatterer.github.io/rooted-graphene/magisk/
+And then upgrade.
 
 ## Script
 
@@ -162,15 +224,14 @@ bash -c '. rooted-ota.sh && createAndReleaseRootedOta'
 As [magisk does not seem a perfect match for GrapheneOS](https://github.com/topjohnwu/Magisk/pull/7606), you might be looking for alternatives.
 
 I had a first go at [patching kernelsu](https://github.com/schnatterer/rooted-graphene/commit/201b6dc939ab3a202694fa892de6db2840e5c3d6) which booted but did not provide root. 
-There even are some [artifacts](https://github.com/schnatterer/rooted-graphene/releases/tag/2024042100) to try. 
-
 Patching kernelsu is much more complex that patching magisk. 
 It might even be impossible to run GrapheneOS with it, without building GrapheneOS from scratch.
-
 Also, some parts of kernelsu seem to be closed source, which feels suspicious and inappropriate for a tool with so much influence on your device.
 
 Another alternative might be to use a version of magisk (like [the one maintained by pixincreate](https://github.com/pixincreate/Magisk)) that contains patches to make zygisk work.  
 This still has some limitations, like [certain modules checking for magisk's signature won't work](https://github.com/schnatterer/rooted-graphene/commit/da0cd817c2665798df46df1aeb7caef9d98b79d0#r141746606). 
+
+Another option [might be](https://github.com/schnatterer/rooted-graphene/pull/73#issuecomment-2666870886) Kitsune magisk.
 
 In general, using [magisk and especially zygisk with Graphene seems to have the risk of breaking things with every new release](https://github.com/chenxiaolong/avbroot/issues/213#issuecomment-1986637884).  
 It's good to have the rootless version as a fallback! 
@@ -185,17 +246,19 @@ PASSPHRASE_AVB=1 PASSPHRASE_OTA=1 bash -c '. rooted-ota.sh && key2base64 && KEY_
 # Avoid having to download OTA all over again: SKIP_CLEANUP=true or:
 mkdir -p .tmp && ln -s $PWD/shiba-ota_update-2023121200.zip .tmp/shiba-ota_update-2023121200.zip
 
+# Test only patching
+  export PASSPHRASE_AVB=x PASSPHRASE_OTA=y
+SKIP_CLEANUP=true DEVICE_ID=oriole MAGISK_PREINIT_DEVICE='metadata' bash -c '. rooted-ota.sh && createRootedOta'
+
 # Test only releasing
   GITHUB_TOKEN=gh... \
+ DEBUG=true \
+GITHUB_REPO=schnatterer/rooted-graphene \
+OTA_VERSION=2025021100 \
 RELEASE_ID='' \
-ASSET_EXISTS=false \
-POTENTIAL_RELEASE_NAME=test \
-POTENTIAL_ASSET_NAME=test.zip \
-GITHUB_REPO=schnatterer/rooted-ota \
   bash -c '. rooted-ota.sh && releaseOta'
-
 # Test only GH pages deployment
-GITHUB_REPO=schnatterer/rooted-ota \
+GITHUB_REPO=schnatterer/rooted-graphene \
 DEVICE_ID=oriole \
 MAGISK_PREINIT_DEVICE=metadata \
   bash -c '. rooted-ota.sh && findLatestVersion && checkBuildNecessary && createOtaServerData && uploadOtaServerData'
@@ -203,7 +266,7 @@ MAGISK_PREINIT_DEVICE=metadata \
 
 # e2e test
   GITHUB_TOKEN=gh... \
-GITHUB_REPO=schnatterer/rooted-ota \
+GITHUB_REPO=schnatterer/rooted-graphene \
 DEVICE_ID=oriole \
 MAGISK_PREINIT_DEVICE=metadata \
 SKIP_CLEANUP=true \

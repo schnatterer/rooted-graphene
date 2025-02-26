@@ -11,33 +11,27 @@
   },
   packageRules: [
     {
+      matchPackageNames: ["*"],
       description: "Automatically merge minor and patch-level updates",
       matchUpdateTypes: ["minor", "patch" ],
       automerge: true,
     },
   ],
-  platformAutomerge: true,
   customManagers: [
     {
       customType: "regex",
       fileMatch: ["rooted-ota.sh"],
-      matchStrings: [ "AVB_ROOT_VERSION=(?<currentValue>.*?)\\n" ],
-      depNameTemplate: "chenxiaolong/avbroot",
-      datasourceTemplate: "github-releases"
-    },
-    {
-      customType: "regex",
-      fileMatch: ["rooted-ota.sh"],
-      matchStrings: [ "CUSTOTA_VERSION=(?<currentValue>.*?)\\n" ],
-      depNameTemplate: "chenxiaolong/Custota",
-      datasourceTemplate: "github-releases"
-    },
-    {
-      customType: "regex",
-      fileMatch: ["rooted-ota.sh"],
-      matchStrings: [ "MAGISK_VERSION=\\$\\{MAGISK_VERSION:-'(?<currentValue>v[\\d.]+)'\\}" ],
-      depNameTemplate: "topjohnwu/Magisk",
-      datasourceTemplate: "github-releases"
+      matchStrings: [
+        // Match lines like these:
+        // # renovate: datasource=github-releases packageName=chenxiaolong/avbroot versioning=semver
+        //AVB_ROOT_VERSION=3.9.0
+        // See https://docs.renovatebot.com/modules/manager/regex/
+        "# renovate: datasource=(?<datasource>[a-z-]+?)(?: depName=(?<depName>.+?))? packageName=(?<packageName>.+?)(?: versioning=(?<versioning>[a-z-]+?))?\\s.+?_VERSION=(?<currentValue>.+?)\\s",
+        // # renovate: datasource=git-refs packageName=https://github.com/chenxiaolong/my-avbroot-setup currentValue=master
+        //PATCH_PY_COMMIT=334e506d
+        // https://docs.renovatebot.com/modules/datasource/git-refs/
+        "# renovate: datasource=(?<datasource>[a-z-]+?)(?: depName=(?<depName>.+?))? packageName=(?<packageName>.+?)(?: currentValue=(?<currentValue>[a-z-]+?))?\\s.+?_COMMIT=(?<currentDigest>.+?)\\s",
+        ]
     }
   ]
 }
