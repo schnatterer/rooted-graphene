@@ -75,6 +75,7 @@ OEMUNLOCKONBOOT_VERSION=1.1
 AFSR_VERSION=1.0.2
 
 CHENXIAOLONG_PK='ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDOe6/tBnO7xZhAWXRj3ApUYgn+XZ0wnQiXM8B7tPgv4'
+GIT_PUSH_RETRIES=10
 
 set -o nounset -o pipefail -o errexit
 
@@ -516,11 +517,30 @@ function uploadOtaServerData() {
         --message "Update device $DEVICE_ID basing on commit $current_commit" \
         --author="$current_author"
   
-    git push origin gh-pages
+    gitPushWithRetries
   fi
 
   # Switch back to the original branch
   git checkout "$current_branch"
+}
+
+function gitPushWithRetries() {
+  local count=0
+
+  while [ $count -lt $GIT_PUSH_RETRIES ]; do
+    if git push origin gh-pages; then
+      break
+    else
+      count=$((count + 1))
+      printGreen "Retry $count/$GIT_PUSH_RETRIES failed. Retrying..."
+      sleep 2
+    fi
+  done
+  
+  if [ $count -eq $GIT_PUSH_RETRIES ]; then
+    printRed "Failed to push to gh-pages after $GIT_PUSH_RETRIES attempts."
+    exit 1
+  fi
 }
 
 function print() {
