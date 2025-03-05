@@ -1,7 +1,7 @@
 {
   "version": 2,
   "full": {
-    "location_ota": "https://github.com/schnatterer/rooted-graphene/releases/download/2025030200/caiman-2025030200-b2403af-magisk-v28.1.zip",
-    "location_csig": "https://github.com/schnatterer/rooted-graphene/releases/download/2025030200/caiman-2025030200-b2403af-magisk-v28.1.zip.csig"
+    "location_ota": "https://github.com/schnatterer/rooted-graphene/releases/download/2025030300/caiman-2025030300-01920f1-magisk-v28.1.zip",
+    "location_csig": "https://github.com/schnatterer/rooted-graphene/releases/download/2025030300/caiman-2025030300-01920f1-magisk-v28.1.zip.csig"
   }
 }
