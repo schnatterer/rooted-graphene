@@ -1,7 +1,7 @@
 {
   "version": 2,
   "full": {
-    "location_ota": "https://github.com/schnatterer/rooted-graphene/releases/download/2025030300/tokay-2025030300-01920f1-rootless.zip",
-    "location_csig": "https://github.com/schnatterer/rooted-graphene/releases/download/2025030300/tokay-2025030300-01920f1-rootless.zip.csig"
+    "location_ota": "https://github.com/schnatterer/rooted-graphene/releases/download/2025030800/tokay-2025030800-4ad9f57-rootless.zip",
+    "location_csig": "https://github.com/schnatterer/rooted-graphene/releases/download/2025030800/tokay-2025030800-4ad9f57-rootless.zip.csig"
   }
 }
