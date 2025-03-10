@@ -528,6 +528,7 @@ function gitPushWithRetries() {
   local count=0
 
   while [ $count -lt $GIT_PUSH_RETRIES ]; do
+    git pull --rebase
     if git push origin gh-pages; then
       break
     else
