@@ -58,6 +58,7 @@ on:
 jobs:
   build-device:
     runs-on: ubuntu-latest
+    timeout-minutes: 20 # Make sure to not waste hours when some command does not return 
     steps:
       - uses: actions/checkout@v4
         with:
