@@ -2,13 +2,17 @@ name: Renovate
 on:
   schedule:
     - cron: '0 20 * * *'
-
+  
   workflow_dispatch:
-
+  
   # Rebase open PRs on push
   push:
     branches: [ main ]
-
+    
+  pull_request:
+    types: [synchronize, opened, reopened]
+    paths:
+      - .github/workflows/renovate.yaml
 jobs:
   renovate:
     runs-on: ubuntu-latest
