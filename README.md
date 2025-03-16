@@ -51,6 +51,7 @@ See [grapheneos.org/releases](https://grapheneos.org/releases) for that.
   * you might have to change ownership or delete these files:
     * `/sdcard/Android/data/com.chiller3.custota/`
     * `/data/ota_packagecare_map.pb`
+  * If you no longer have root, you can always delete modules using `adb`, see [#82](https://github.com/schnatterer/rooted-graphene/issues/82).
 
 ## Initial installation of OS
 
