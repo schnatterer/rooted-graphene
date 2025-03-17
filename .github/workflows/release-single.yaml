@@ -5,6 +5,8 @@ on:
   push:
     branches:
       - '*'
+    paths:
+      - rooted-ota.sh
   pull_request:
     types: [synchronize, opened, reopened]
     paths:
