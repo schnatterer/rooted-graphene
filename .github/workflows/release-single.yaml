@@ -33,6 +33,10 @@ on:
         description: skip building rootless OTA
         type: boolean
         required: false
+      skip-rooted:
+        description: skip building rooted OTA
+        type: boolean
+        required: false
       upload-test-ota:
         description: Upload OTA to test folder
         required: false
@@ -43,10 +47,6 @@ on:
         type: boolean
       force-ota-server-upload:
         description: Force OTA server upload
-        required: false
-        type: boolean
-      skip-ota-server-upload:
-        description: Skip OTA server upload
         required: false
         type: boolean
       skip-release:
@@ -73,18 +73,18 @@ jobs:
         # Note the difference between github.event.inputs (workflow_dispatch) and inputs (workflow_call)
         run: |
           echo "DEVICE_ID=$(echo '${{ github.event.inputs.device-id || inputs.device-id || 'shiba' }}' | xargs)" >> $GITHUB_ENV
-          echo "MAGISK_PREINIT_DEVICE=$(echo '${{ github.event.inputs.magisk-preinit-device || inputs.magisk-preinit-device || 'sda10' }}' | xargs)" >> $GITHUB_ENV
+          if [[ "${{ github.event.inputs.skip-rooted }}" != "true" ]]; then
+            echo "MAGISK_PREINIT_DEVICE=$(echo '${{ github.event.inputs.magisk-preinit-device || inputs.magisk-preinit-device || 'sda10' }}' | xargs)" >> $GITHUB_ENV
+          fi
           
           echo "MAGISK_VERSION=$(echo '${{ github.event.inputs.magisk-version || '' }}' | xargs)" >> $GITHUB_ENV
           echo "OTA_VERSION=$(echo '${{ github.event.inputs.ota-version || '' }}' | xargs)" >> $GITHUB_ENV
           echo "FORCE_OTA_SERVER_UPLOAD=$(echo '${{ github.event.inputs.force-ota-server-upload || '' }}' | xargs)" >> $GITHUB_ENV
           echo "FORCE_BUILD=$(echo '${{ github.event.inputs.force-build || '' }}' | xargs)" >> $GITHUB_ENV
-          echo "SKIP_OTA_SERVER_UPLOAD=$(echo '${{ github.event.inputs.skip-ota-server-upload || '' }}' | xargs)" >> $GITHUB_ENV
           echo "UPLOAD_TEST_OTA=$(echo '${{ github.event.inputs.upload-test-ota || '' }}' | xargs)" >> $GITHUB_ENV
           echo "SKIP_ROOTLESS=$(echo '${{ github.event.inputs.skip-rootless || '' }}' | xargs)" >> $GITHUB_ENV
           echo "SKIP_RELEASE=$(echo '${{ github.event.inputs.skip-release || '' }}' | xargs)" >> $GITHUB_ENV
           
-       
           if [[ "${{ github.event_name }}" == "push" ]]  || [[ "${{ github.event_name }}" == "pull_request" ]]; then
             echo "Running on push: Simple build without release for device $DEVICE_ID"
             echo "FORCE_BUILD=true" >> $GITHUB_ENV
