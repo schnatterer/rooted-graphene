@@ -15,8 +15,8 @@ jobs:
         include:
           - device-id: caiman # Pixel 9 Pro
             magisk-preinit-device: sda10
-#          - device-id: oriole # Pixel 6
-#            magisk-preinit-device: metadata
+          - device-id: oriole # Pixel 6
+            magisk-preinit-device: metadata
 #          - device-id: tokay # Pixel 9
 #            magisk-preinit-device: sda10
 #          - device-id: husky # Pixel 8 Pro
