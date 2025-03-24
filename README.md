@@ -1,7 +1,7 @@
 rooted-graphene
 ===
 
-GrapheneOS over the air updates (OTAs) patched with Magisk using [avbroot](https://github.com/chenxiaolong/avbroot) allowing for AVB and locked bootloader *and* root access.  
+GrapheneOS over the air updates (OTAs) patched with Magisk allowing for AVB and locked bootloader *and* root access.  
 Can be upgraded over the air using [Custota](https://github.com/chenxiaolong/Custota) and its own OTA server.  
 Allows for switching between magisk and rootless via OTA upgrades.
 
@@ -10,27 +10,56 @@ Allows for switching between magisk and rootless via OTA upgrades.
 
 ## Supported devices
 
+I am scratching my own itches be supporting the following devices 
+(and plan to continue as long as it makes sense for me):
+
 * Pixel 9 Pro
 * Pixel 6
 
-All other devices have been discontinued because the amount of GitHub actions minutes required for maintaining that 
-many devices exceed my spending limit.  
+For historical reasons, I am also supporting these devices as long as my GitHub action minutes allow it:
+* Pixel 9
 
-If you have the [Magisk preinit string](#magisk-preinit-strings) (see [.github/workflows/release-multiple.yaml](.github/workflows/release-multiple.yaml)) for your device, you can easily fork this repo and build your own OTAs.
+Supporting more devices would technically be simple, but I am limited by the spending limit of my GitHub actions 
+(see [Notable changelog | 2025030200](#2025030200)).  
+I don't want to increase my spending nor set up a donations page for taxing/legal reasons.
 
+So if you would like to have your devices supported, I recommend the following:
 
-![image](https://github.com/user-attachments/assets/11cf8fe9-b846-4979-8d7c-723408681354)
+* Create your own keys `bash -c 'source rooted-ota.sh && generateKeys'` and store them in a dry and safe place.
+* Fork this repo and add the following Repository secrets (`https://github.com/$YOU/rooted-graphene/settings/secrets/actions`)
+  * CERT_OTA_BASE64 (`base64 -w0 < ota.crt`)
+  * KEY_AVB_BASE64 (`base64 -w0 < avb.key`)
+  * KEY_OTA_BASE64 (`base64 -w0 < ota.key`)
+  * PASSPHRASE_AVB (The passphrase for `avb.key`)
+  * PASSPHRASE_OTA (The passphrase for `ota.key`)
+* Uncomment or add your device(s) in [.github/workflows/release-multiple.yaml](.github/workflows/release-multiple.yaml)
+  See [Magisk preinit string](#magisk-preinit-strings).
+* If you don't want to regularly sync your fork with this repo, I recommend adding this step before `Set inputs`:  
+```yaml
+      - run: wget https://raw.githubusercontent.com/schnatterer/rooted-graphene/refs/heads/main/rooted-ota.sh
+```
+
+This sets up a cron job that builds the latest version of GrapheneOS, nightly.
+
+This way, you won't have too many maintenance efforts but own your own signing key!  
+You can also add a 3rd-party-magisk package if you're willing to trust the authors 
+(see [Using other rooting mechanisms](#using-other-rooting-mechanisms)).
+
+Alternatively, search the forks if someone maintains the device of your choice.    
+Be aware that you would also have to trust them in addition to [me](https://github.com/schnatterer), [chenxiaolong](https://github.com/chenxiaolong) (the author of avbroot and Custota), 
+the authors of GrapheneOS, and the authors of the android open source project.
 
 ## Notable changelog
 
 These are only changes related to rooted-graphene, not GrapheneOS itself.  
 See [grapheneos.org/releases](https://grapheneos.org/releases) for that.
 
-### Unreleased
+### 2025030200
 
-* Discontinued all devices but Pixel 6 and Pixel 9 Pro, because the amount of GitHub actions minutes required for 
+* Discontinued some devices (Pixel 8 Pro (husky), Pixel 8 (shiba), Pixel 6a (bluejay)), because the amount of GitHub actions minutes required for 
   maintaining that many devices exceed my spending limit.  
-  Please fork this repo and build your own OTAs.
+  Please fork this repo and build your own OTAs (see [Supported Devices](#supported-devices)).  
+  ![image](https://github.com/user-attachments/assets/11cf8fe9-b846-4979-8d7c-723408681354)
 * Switch from custota signature file version 1 to 2 (introduced with [custota 5](https://github.com/chenxiaolong/Custota/blob/v5.0/CHANGELOG.md) in october 2024)
 * If you're using custoa magisk module version < 5, please upgrade.  
   Even better: Delete custota magisk module, because it is now packaged in the OTA.
