@@ -41,6 +41,9 @@ MAGISK_VERSION=${MAGISK_VERSION:-${DEFAULT_MAGISK_VERSION}}
 
 SKIP_CLEANUP=${SKIP_CLEANUP:-''}
 
+# For committing to GH pages in different repo, clone it to a different folder and set this var
+PAGES_REPO_FOLDER=${PAGES_REPO_FOLDER:-''}
+
 # Set asset released by this script to latest version, even when OTA_VERSION already exists for this device
 FORCE_OTA_SERVER_UPLOAD=${FORCE_OTA_SERVER_UPLOAD:-'false'}
 # Forces the artifacts to be built (and uploaded to a release)
@@ -478,50 +481,73 @@ function downloadCusotaTool() {
 function uploadOtaServerData() {
 
   # Update OTA server (github pages)
-  local current_branch current_commit current_author
-  current_branch=$(git rev-parse --abbrev-ref HEAD)
+  local current_branch current_commit base_dir src_repo
   current_commit=$(git rev-parse --short HEAD)
-  current_author=$(git log -1 --format="%an <%ae>")
   folderPrefix=''
   
   if [[ "${UPLOAD_TEST_OTA}" == 'true' ]]; then
     folderPrefix='test/'
   fi
 
-  git checkout gh-pages
-  
-  for flavor in "${!POTENTIAL_ASSETS[@]}"; do
-    local POTENTIAL_ASSET_NAME="${POTENTIAL_ASSETS[$flavor]}"
-    local targetFile="${folderPrefix}${flavor}/${DEVICE_ID}.json"
-
-    uploadFile ".tmp/${POTENTIAL_ASSET_NAME}.csig" "$POTENTIAL_ASSET_NAME.csig" "application/octet-stream"
-    
-    mkdir -p "${folderPrefix}${flavor}"
-    # update only, if current $DEVICE_ID.json does not contain $OTA_VERSION
-    # We don't want to trigger users to upgrade on new commits from this repo or new magisk versions
-    # They can manually upgrade by downloading the OTAs from the releases and "adb sideload" them
-    if ! grep -q "$OTA_VERSION" "${targetFile}" || [[ "$FORCE_OTA_SERVER_UPLOAD" == 'true' ]] && [[ "$SKIP_OTA_SERVER_UPLOAD" != 'true' ]]; then
-      cp ".tmp/${flavor}/$DEVICE_ID.json" "${targetFile}"
-      git add "${targetFile}"
-    elif grep -q "${OTA_VERSION}" "${targetFile}"; then
-      printGreen "Skipping update of OTA server, because ${OTA_VERSION} already in ${folderPrefix}${flavor}/${DEVICE_ID}.json and FORCE_OTA_SERVER_UPLOAD is false."
-    else
-      printGreen "Skipping update of OTA server, because SKIP_OTA_SERVER_UPLOAD is true."
+  (
+    base_dir="$(pwd)"
+    src_repo=$(extractGithubRepo "$(git config --get remote.origin.url)")
+    if [[ -n "${PAGES_REPO_FOLDER}" ]]; then
+      cd "${PAGES_REPO_FOLDER}"
     fi
-  done
+    
+    current_branch=$(git rev-parse --abbrev-ref HEAD)
+    git checkout gh-pages
+    
+    for flavor in "${!POTENTIAL_ASSETS[@]}"; do
+      local POTENTIAL_ASSET_NAME="${POTENTIAL_ASSETS[$flavor]}"
+      local targetFile="${folderPrefix}${flavor}/${DEVICE_ID}.json"
   
-  if ! git diff-index --quiet HEAD; then
-    # Commit and push only when there are changes
-    git config user.name "GitHub Actions" && git config user.email "actions@github.com"
-    git commit \
-        --message "Update device $DEVICE_ID basing on commit $current_commit" \
-        --author="$current_author"
+      uploadFile "${base_dir}/.tmp/${POTENTIAL_ASSET_NAME}.csig" "$POTENTIAL_ASSET_NAME.csig" "application/octet-stream"
+      
+      mkdir -p "${folderPrefix}${flavor}"
+      # update only, if current $DEVICE_ID.json does not contain $OTA_VERSION
+      # We don't want to trigger users to upgrade on new commits from this repo or new magisk versions
+      # They can manually upgrade by downloading the OTAs from the releases and "adb sideload" them
+      if ! grep -q "$OTA_VERSION" "${targetFile}" || [[ "$FORCE_OTA_SERVER_UPLOAD" == 'true' ]] && [[ "$SKIP_OTA_SERVER_UPLOAD" != 'true' ]]; then
+        cp "${base_dir}/.tmp/${flavor}/$DEVICE_ID.json" "${targetFile}"
+        git add "${targetFile}"
+      elif grep -q "${OTA_VERSION}" "${targetFile}"; then
+        printGreen "Skipping update of OTA server, because ${OTA_VERSION} already in ${folderPrefix}${flavor}/${DEVICE_ID}.json and FORCE_OTA_SERVER_UPLOAD is false."
+      else
+        printGreen "Skipping update of OTA server, because SKIP_OTA_SERVER_UPLOAD is true."
+      fi
+    done
+    
+    if ! git diff-index --quiet HEAD; then
+      # Commit and push only when there are changes
+      git config user.name "GitHub Actions" && git config user.email "actions@github.com"
+      git commit \
+          --message "Update device ${DEVICE_ID} basing on ${src_repo}@${current_commit}" \
+    
+      gitPushWithRetries
+    fi
   
-    gitPushWithRetries
-  fi
+    # Switch back to the original branch
+    git checkout "$current_branch"
+  )
+}
 
-  # Switch back to the original branch
-  git checkout "$current_branch"
+extractGithubRepo() {
+  # Works for both HTTPS and SSH, e.g.
+  # https://github.com/schnatterer/rooted-graphene
+  # git@github.com:schnatterer/rooted-graphene.git
+
+  local remote_url="$1"
+  local repo
+
+  # Remove the protocol and .git suffix
+  remote_url=$(echo "$remote_url" | sed -e 's/.*:\/\/\|.*@//' -e 's/\.git$//')
+
+  # Extract the owner/repo part
+  repo=$(echo "$remote_url" | sed -e 's/.*[:\/]\([^\/]*\/[^\/]*\)$/\1/')
+
+  echo "$repo"
 }
 
 function gitPushWithRetries() {
