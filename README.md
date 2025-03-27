@@ -1,6 +1,10 @@
-This OTA comes in different flavors, where each might support different devices.
+> ⚠️ Note that no new OTAs are published on this URL.
 
-Choose a flavor and set it as the URL in [Custota](https://github.com/chenxiaolong/Custota#usage).
+They moved to [their own GitHub organization](https://rooted-graphene.github.io/ota/).
+
+See [announcement](https://github.com/schnatterer/rooted-graphene/blob/81e4bda/README.md#2025032500) for details.
+
+For historical reasons, you can find the last versions of these flavors here:
 
 * [magisk](magisk)
-* [rootless](rootless) - not that you can update to this flavor to disable root. However, after the upgrade, custota will no longer work. For re-enabling root, you will have to use `adb sideload`.
+* [rootless](rootless)
