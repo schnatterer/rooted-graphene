@@ -158,7 +158,7 @@ Once GrapheneOS is installed
     ```bash
     fastboot reboot-bootloader
     fastboot erase avb_custom_key
-    curl -s https://github.com/rooted-graphene/ota/raw/refs/heads/main/avb_pkmd.bin > avb_pkmd.bin
+    curl -s https://raw.githubusercontent.com/rooted-graphene/ota/refs/heads/main/avb_pkmd.bin > avb_pkmd.bin
     fastboot flash avb_custom_key avb_pkmd.bin
     ```
 * **[Optional]** Before locking the bootloader, reboot into Android once to confirm that everything is properly signed.  
