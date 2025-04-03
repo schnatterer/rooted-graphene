@@ -57,6 +57,8 @@ FORCE_BUILD=${FORCE_BUILD:-'false'}
 # Skip setting asset released by this script to latest version, even when OTA_VERSION is latest for this device
 # Takes precedence over FORCE_OTA_SERVER_UPLOAD
 SKIP_OTA_SERVER_UPLOAD=${SKIP_OTA_SERVER_UPLOAD:-'false'}
+# Skip patching modules (custota and oemunlockunboot) into OTA
+SKIP_MODULES=${SKIP_MODULES:-'false'}
 # Upload OTA to test folder on OTA server
 UPLOAD_TEST_OTA=${UPLOAD_TEST_OTA:-false}
 
@@ -216,6 +218,9 @@ function checkMandatoryVariable() {
 
 function createAssetSuffix() {
   local suffix=''
+  if [[ "${SKIP_MODULES}" == 'true' ]]; then
+    suffix+='-minimal'
+  fi 
   if [[ "${UPLOAD_TEST_OTA}" == 'true' ]]; then
     suffix+='-test'
   fi
@@ -334,9 +339,11 @@ function patchOTAs() {
         args+=("--pass-ota-env-var" "PASSPHRASE_OTA")
       fi
 
-      args+=("--module-custota" ".tmp/custota.zip")
-      args+=("--module-oemunlockonboot" ".tmp/oemunlockonboot.zip")
-      # We patch it later if necessary
+      if [[ "${SKIP_MODULES}" != 'true' ]]; then
+        args+=("--module-custota" ".tmp/custota.zip")
+        args+=("--module-oemunlockonboot" ".tmp/oemunlockonboot.zip")
+      fi
+      # We create csig and device JSON for OTA later if necessary
       args+=("--skip-custota-tool")
 
       # We need to add .tmp to PATH, but we can't use $PATH: because this would be the PATH of the host not the container
