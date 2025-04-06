@@ -84,6 +84,8 @@ Some more details:
 
 ### Installation
 
+> ⚠️ In case you encounter an error on boot saying `Device is corrupt. It can't be trusted` you should be able to bypass it by pressing the power button. See [#89](https://github.com/schnatterer/rooted-graphene/issues/89) for details. 
+
 #### Install GrapheneOS
 
 ##### Web Installer
