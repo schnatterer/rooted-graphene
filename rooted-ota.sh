@@ -387,17 +387,25 @@ function base642key() {
 function releaseOta() {
   checkMandatoryVariable 'GITHUB_REPO' 'GITHUB_TOKEN'
 
-  local response changelog
+  local response changelog src_repo current_commit 
+
   if [[ -z "$RELEASE_ID" ]]; then
+    src_repo=$(extractGithubRepo "$(git config --get remote.origin.url)")
     
-    changelog=$(curl -sL -X POST -H "Authorization: token $GITHUB_TOKEN" \
-      -d "{
-              \"tag_name\": \"$OTA_VERSION\",
-              \"target_commitish\": \"main\"
-            }" \
-      "https://api.github.com/repos/$GITHUB_REPO/releases/generate-notes" | jq -r '.body // empty')
-    # Replace \n by \\n to keep them as chars
-    changelog="Update to [GrapheneOS ${OTA_VERSION}](https://grapheneos.org/releases#${OTA_VERSION}).\n\n$(echo "${changelog}" | sed ':a;N;$!ba;s/\n/\\n/g')"
+    if [[ "${GITHUB_REPO}" == "${src_repo}" ]]; then
+      changelog=$(curl -sL -X POST -H "Authorization: token $GITHUB_TOKEN" \
+        -d "{
+                \"tag_name\": \"$OTA_VERSION\",
+                \"target_commitish\": \"main\"
+              }" \
+        "https://api.github.com/repos/$GITHUB_REPO/releases/generate-notes" | jq -r '.body // empty')
+      # Replace \n by \\n to keep them as chars
+      changelog="Update to [GrapheneOS ${OTA_VERSION}](https://grapheneos.org/releases#${OTA_VERSION}).\n\n$(echo "${changelog}" | sed ':a;N;$!ba;s/\n/\\n/g')"
+    else 
+      # When pushing to different repo's GH pages, generating notes does not make too much sense. Refer to the used repo's "version" instead. 
+      current_commit=$(git rev-parse --short HEAD)
+      changelog="Update to [GrapheneOS ${OTA_VERSION}](https://grapheneos.org/releases#${OTA_VERSION}).\n\nRelease created using ${src_repo}@${current_commit}. See [Changelog](https://github.com/${src_repo}/blob/${current_commit}/README.md#notable-changelog)."
+    fi
     
     response=$(curl -sL -X POST -H "Authorization: token $GITHUB_TOKEN" \
       -d "{
