@@ -84,7 +84,12 @@ Some more details:
 
 ### Installation
 
-> ⚠️ In case you encounter an error on boot saying `Device is corrupt. It can't be trusted` you should be able to bypass it by pressing the power button. See [#89](https://github.com/schnatterer/rooted-graphene/issues/89) for details. 
+> ⚠️ In case you encounter an error on boot saying `Device is corrupt. It can't be trusted` you
+> * might be able to bypass it by pressing the power button or
+> * could try flashing the rootless variant first and then  
+>   either flash/sideload the rooted variant (again) or [switch to root via OTA](#switching-between-root-and-rootless).
+> 
+> See [#89](https://github.com/schnatterer/rooted-graphene/issues/89) and [#96](https://github.com/schnatterer/rooted-graphene/issues/96) for details. 
 
 #### Install GrapheneOS
 
