@@ -131,7 +131,7 @@ TLDR:
 
 Once GrapheneOS is installed
 
-* Download the [OTA from releases](https://github.com/schnatterer/rooted-graphene/releases/) with **the same version** that you just installed. 
+* Download the [OTA from releases](https://github.com/rooted-graphene/ota/releases) with **the same version** that you just installed. 
 * Obtain latest `fastboot`
 * Install [avbroot](https://github.com/chenxiaolong/avbroot)
 * Extract the partition images from the patched OTA that are different from the original.
