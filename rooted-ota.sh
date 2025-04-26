@@ -387,6 +387,8 @@ function patchOTAs() {
       if [[ "$flavor" == 'magisk' ]]; then
         args+=("--patch-arg=--magisk" "--patch-arg" ".tmp/magisk-$MAGISK_VERSION.apk")
         args+=("--patch-arg=--magisk-preinit-device" "--patch-arg" "$MAGISK_PREINIT_DEVICE")
+      else
+        args+=("--patch-arg=--rootless")
       fi
       if [ -n "$LINEAGE_TYPE" ]; then
         args+=("--patch-arg=--clear-vbmeta-flags") # LineageOS needs this: Verified boot is disabled by vbmeta's header flags: 0x3
