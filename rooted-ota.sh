@@ -392,14 +392,18 @@ function patchOTAs() {
         args+=("--patch-arg=--clear-vbmeta-flags") # LineageOS needs this: Verified boot is disabled by vbmeta's header flags: 0x3
       fi
 
-      # If env vars not set, passphrases will be queried interactively
-      if [ -v PASSPHRASE_AVB ]; then
-        args+=("--pass-avb-env-var" "PASSPHRASE_AVB")
+      # If env vars not set, passphrases will be queried now!
+      if [ ! -v PASSPHRASE_AVB ]; then
+        read -s -p "This is $0, please enter your AVB password! " PASSPHRASE_AVB
+        echo
       fi
+      args+=("--pass-avb-env-var" "PASSPHRASE_AVB")
 
-      if [ -v PASSPHRASE_OTA ]; then
-        args+=("--pass-ota-env-var" "PASSPHRASE_OTA")
+      if [ ! -v PASSPHRASE_OTA ]; then
+        read -s -p "This is $0, please enter your OTA password! " PASSPHRASE_OTA
+        echo
       fi
+      args+=("--pass-ota-env-var" "PASSPHRASE_OTA")
 
       if [[ "${SKIP_MODULES}" != 'true' ]]; then
         args+=("--module-custota" ".tmp/custota.zip")
