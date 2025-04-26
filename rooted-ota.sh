@@ -355,8 +355,8 @@ function patchOTAs() {
         python:${PYTHON_VERSION} sh -c \
           "apk add openssh && \
            pip install -r .tmp/my-avbroot-setup/requirements.txt && \
-           python .tmp/my-avbroot-setup/patch.py ${args[*]} && \
-           chown -R $(id -u):$(id -g) .tmp"
+           python .tmp/my-avbroot-setup/patch.py ${args[*]} ; result=\$?; \
+           chown -R $(id -u):$(id -g) .tmp; exit \$result"
     
        printGreen "Finished patching file ${targetFile}"
     fi
