@@ -122,12 +122,16 @@ function createAndReleaseRootedOta() {
 }
 
 function createRootedOta() {
-  [[ "$SKIP_CLEANUP" != 'true' ]] && trap cleanup EXIT ERR
+  [[ "$SKIP_CLEANUP" != 'true' ]] && trap cleanup EXIT ERR || trap cleanupNecessary EXIT ERR
 
   findLatestVersion
   checkBuildNecessary
   downloadAndroidDependencies
   patchOTAs
+}
+
+function cleanupNecessary() {
+  rm -rf .tmp/my-avbroot-setup
 }
 
 function cleanup() {
