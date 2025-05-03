@@ -350,7 +350,7 @@ function patchOTAs() {
       # We need to add .tmp to PATH, but we can't use $PATH: because this would be the PATH of the host not the container
       # Python image is designed to run as root, so chown the files it creates back at the end
       # ... room for improvement 😐️
-      docker run --rm -v "$PWD:/app"  -w /app \
+      docker run --rm -v "$PWD/.tmp:/app/.tmp"  -w /app \
         -e PATH='/bin:/usr/local/bin:/sbin:/usr/bin/:/app/.tmp' \
         -e PASSPHRASE_AVB="$PASSPHRASE_AVB" -e PASSPHRASE_OTA="$PASSPHRASE_OTA" \
         python:${PYTHON_VERSION} sh -c \
