@@ -318,10 +318,11 @@ function patchOTAs() {
     if ls "$targetFile" >/dev/null 2>&1; then
       printGreen "File $targetFile already exists locally, not patching."
     else
+      patchSystem
       local args=()
 
       args+=("--output" "$targetFile")
-      args+=("--input" ".tmp/$OTA_TARGET.zip")
+      args+=("--input" ".tmp/$OTA_TARGET.zip.patched")
       args+=("--sign-key-avb" "$KEY_AVB")
       args+=("--sign-key-ota" "$KEY_OTA")
       args+=("--sign-cert-ota" "$CERT_OTA")
@@ -362,6 +363,41 @@ function patchOTAs() {
     fi
     
   done
+}
+
+function patchSystem() {
+  .tmp/avbroot ota extract -i ".tmp/$OTA_TARGET.zip" -d extracted
+  cd extracted
+
+  ../.tmp/avbroot avb unpack -i system.img
+  ../.tmp/afsr unpack -i raw.img
+
+  cp "../gesture_pill.rc" "fs_tree/system/etc/init/gesture_pill.rc"
+
+  AVB_KEY_PASS="$PASSPHRASE_AVB"
+  OTA_KEY_PASS="$PASSPHRASE_OTA"
+
+  touch avb.toml
+
+  ../.tmp/afsr pack -o raw.img
+  ../.tmp/avbroot avb pack \
+    -o system.img \
+    -k "../$KEY_AVB" \
+    --pass-env-var "$AVB_KEY_PASS" \
+    --recompute-size
+
+  cd ..
+
+  .tmp/avbroot ota patch \
+    -i ".tmp/$OTA_TARGET.zip" \
+    -o ".tmp/$OTA_TARGET.zip.patched" \
+    --replace system extracted/system.img \
+    --key-avb "$KEY_AVB" \
+    --key-ota "$KEY_OTA" \
+    --cert-ota "$CERT_OTA" \
+    --pass-avb-env-var "$AVB_KEY_PASS" \
+    --pass-ota-env-var "$OTA_KEY_PASS" \
+    --rootless
 }
 
 function base642key() {
