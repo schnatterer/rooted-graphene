@@ -387,6 +387,8 @@ function patchSystem() {
     --recompute-size
 
   cd ..
+  ls .tmp
+  echo $KEY_AVB
 
   .tmp/avbroot ota patch \
     -i ".tmp/$OTA_TARGET.zip" \
