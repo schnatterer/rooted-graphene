@@ -1,0 +1,25 @@
+name: Release multiple devices
+
+on:
+  schedule:
+    - cron:  '0 3 * * *'
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  
+jobs:
+  # Checking if a new version was released at all before starting the matrix would be more efficient, but depends on device
+  # So run the whole matrix as cron. One of the first checks is if there is a need for release at all.
+  build-devices:
+    strategy:
+      matrix:
+        include:
+          - device-id: shiba # Pixel 8
+            magisk-preinit-device: sda10
+    uses: ./.github/workflows/release-single.yaml
+    secrets: inherit 
+    with:
+      device-id: ${{ matrix.device-id }}
+      magisk-preinit-device: ${{ matrix.magisk-preinit-device }}
