@@ -374,6 +374,20 @@ function patchSystem() {
 
   cp "../gesture_pill.rc" "fs_tree/system/etc/init/gesture_pill.rc"
 
+  cat << EOL >> fs_metadata.toml
+[entries.xattrs]
+"security.selinux" = 'u:object_r:system_file:s0\0'
+
+[[entries]]
+path = "/system/etc/init/gesture_pill.rc"
+file_type = "RegularFile"
+file_mode = "644"
+atime = "2009-01-01T00:00:00Z"
+ctime = "2009-01-01T00:00:00Z"
+mtime = "2009-01-01T00:00:00Z"
+crtime = "2009-01-01T00:00:00Z"
+EOL
+
   export AVB_KEY_PASS="$PASSPHRASE_AVB"
   export OTA_KEY_PASS="$PASSPHRASE_OTA"
 
@@ -387,8 +401,6 @@ function patchSystem() {
     --recompute-size
 
   cd ..
-  ls .tmp
-  echo $KEY_AVB
 
   .tmp/avbroot ota patch \
     -i ".tmp/$OTA_TARGET.zip" \
