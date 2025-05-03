@@ -383,7 +383,7 @@ function patchSystem() {
   ../.tmp/avbroot avb pack \
     -o system.img \
     -k "../$KEY_AVB" \
-    --pass-env-var "$AVB_KEY_PASS" \
+    --pass-env-var "AVB_KEY_PASS" \
     --recompute-size
 
   cd ..
