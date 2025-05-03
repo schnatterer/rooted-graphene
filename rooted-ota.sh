@@ -374,8 +374,8 @@ function patchSystem() {
 
   cp "../gesture_pill.rc" "fs_tree/system/etc/init/gesture_pill.rc"
 
-  AVB_KEY_PASS="$PASSPHRASE_AVB"
-  OTA_KEY_PASS="$PASSPHRASE_OTA"
+  export AVB_KEY_PASS="$PASSPHRASE_AVB"
+  export OTA_KEY_PASS="$PASSPHRASE_OTA"
 
   touch avb.toml
 
@@ -397,8 +397,8 @@ function patchSystem() {
     --key-avb "$KEY_AVB" \
     --key-ota "$KEY_OTA" \
     --cert-ota "$CERT_OTA" \
-    --pass-avb-env-var "$AVB_KEY_PASS" \
-    --pass-ota-env-var "$OTA_KEY_PASS" \
+    --pass-avb-env-var "AVB_KEY_PASS" \
+    --pass-ota-env-var "OTA_KEY_PASS" \
     --rootless
 }
 
