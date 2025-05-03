@@ -375,9 +375,6 @@ function patchSystem() {
   cp "../gesture_pill.rc" "fs_tree/system/etc/init/gesture_pill.rc"
 
   cat << EOL >> fs_metadata.toml
-[entries.xattrs]
-"security.selinux" = 'u:object_r:system_file:s0\0'
-
 [[entries]]
 path = "/system/etc/init/gesture_pill.rc"
 file_type = "RegularFile"
@@ -386,6 +383,9 @@ atime = "2009-01-01T00:00:00Z"
 ctime = "2009-01-01T00:00:00Z"
 mtime = "2009-01-01T00:00:00Z"
 crtime = "2009-01-01T00:00:00Z"
+
+[entries.xattrs]
+"security.selinux" = 'u:object_r:system_file:s0\0'
 EOL
 
   export AVB_KEY_PASS="$PASSPHRASE_AVB"
