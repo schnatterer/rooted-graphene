@@ -2,11 +2,11 @@ name: Release single device
 
 on:
   # Note that push/PR will not release, only build to see if there are obvious failures
-  push:
-    branches:
-      - '*'
-    paths:
-      - rooted-ota.sh
+  # push:
+  #   branches:
+  #     - '*'
+  #   paths:
+  #     - rooted-ota.sh
   pull_request:
     types: [synchronize, opened, reopened]
     paths:
