@@ -64,7 +64,8 @@ UPLOAD_TEST_OTA=${UPLOAD_TEST_OTA:-false}
 
 OTA_CHANNEL=${OTA_CHANNEL:-stable} # Alternative: 'alpha'
 NO_COLOR=${NO_COLOR:-''}
-OTA_BASE_URL="https://releases.grapheneos.org"
+OTA_BASE_URL=${OTA_BASE_URL:-"https://releases.grapheneos.org"} # For LineageOS: https://download.lineageos.org/api/v2
+GRAPHENE_TYPE=${GRAPHENE_TYPE-'ota_update'} # Other option: factory
 
 # renovate: datasource=github-releases packageName=chenxiaolong/avbroot versioning=semver
 AVB_ROOT_VERSION=3.16.0
@@ -121,12 +122,16 @@ function createAndReleaseRootedOta() {
 }
 
 function createRootedOta() {
-  [[ "$SKIP_CLEANUP" != 'true' ]] && trap cleanup EXIT ERR
+  [[ "$SKIP_CLEANUP" != 'true' ]] && trap cleanup EXIT ERR || trap cleanupNecessary EXIT ERR
 
   findLatestVersion
   checkBuildNecessary
   downloadAndroidDependencies
   patchOTAs
+}
+
+function cleanupNecessary() {
+  rm -rf .tmp/my-avbroot-setup
 }
 
 function cleanup() {
@@ -239,7 +244,12 @@ function downloadAndroidDependencies() {
   fi
 
   if ! ls ".tmp/$OTA_TARGET.zip" >/dev/null 2>&1; then
+    print "Downloading OTA from $OTA_URL"
     curl --fail -sLo ".tmp/$OTA_TARGET.zip" "$OTA_URL"
+  fi
+
+  if [ -n "$OTA_TARGET_SHA256" ]; then
+    echo "$OTA_TARGET_SHA256  .tmp/$OTA_TARGET.zip" | sha256sum -c
   fi
 }
 
@@ -251,16 +261,65 @@ function findLatestVersion() {
   fi
   print "Magisk version: $MAGISK_VERSION"
 
-  # Search for a new version grapheneos.
-  # e.g. https://releases.grapheneos.org/shiba-stable
+  if [ -n "$GRAPHENE_TYPE" ]; then
+    # Search for a new version grapheneos.
+    # e.g. https://releases.grapheneos.org/shiba-stable
 
-  if [[ "$OTA_VERSION" == 'latest' ]]; then
-    OTA_VERSION=$(curl --fail -sL "$OTA_BASE_URL/$DEVICE_ID-$OTA_CHANNEL" | head -n1 | awk '{print $1;}')
+    if [[ "$OTA_VERSION" == 'latest' ]]; then
+      OTA_VERSION=$(curl --fail -sL "$OTA_BASE_URL/$DEVICE_ID-$OTA_CHANNEL" | head -n1 | awk '{print $1;}')
+    fi
+    OTA_TARGET="$DEVICE_ID-$GRAPHENE_TYPE-$OTA_VERSION"
+    OTA_URL="$OTA_BASE_URL/$OTA_TARGET.zip"
+    # e.g.  shiba-ota_update-2023121200
+  elif [ -n "$LINEAGE_TYPE" ]; then
+    # LINEAGE_TYPE is more closer to OTA_CHANNEL than GRAPHENE_TYPE: it is a flavour, e.g. nightly, microG
+    case $LINEAGE_TYPE in
+
+      nightly)
+        # Search for a new version lineageos at "${OTA_BASE_URL}/devices/${DEVICE_ID}/builds"
+        # e.g. https://download.lineageos.org/api/v2/devices/Spacewar/builds
+
+        # Please note that LineageOS nightly builds may have different dates for different devices!
+        # curl -s https://download.lineageos.org/api/v2/devices/Spacewar/builds | jq -r 'map(select(.type == "nightly")) | sort_by(.version, .date) | last | .version, .date, .type '
+        # 22.2
+        # 2025-04-23
+        # nightly
+        # curl -s https://download.lineageos.org/api/v2/devices/shiba/builds | jq -r 'map(select(.type == "nightly")) | sort_by(.version, .date) | last | .version, .date, .type '
+        # 22.2
+        # 2025-04-20
+        # nightly
+        mkdir -p .tmp
+        buildjson=.tmp/download-lineageos-$DEVICE_ID.json
+        curl --fail -sLo $buildjson "${OTA_BASE_URL}/devices/${DEVICE_ID}/builds"
+
+        if [[ "$OTA_VERSION" == 'latest' ]]; then
+          OTA_VERSION=$(jq --arg LINEAGE_TYPE $LINEAGE_TYPE -r 'map(select(.type == $LINEAGE_TYPE)) | sort_by(.version, .date) | last | .date' $buildjson)
+        fi
+        buildjsonchunk="$(jq --arg LINEAGE_TYPE nightly --arg OTA_VERSION $OTA_VERSION 'map(select(.type == $LINEAGE_TYPE and .date == $OTA_VERSION)) | sort_by(.version, .date) | last ' -- $buildjson)"
+
+        if [ "null" == "$buildjsonchunk" ]; then
+          printRed "Version $OTA_VERSION for device $DEVICE_ID is missing! Try the archive yourself: https://lineage-archive.timschumi.net/"
+          exit 1
+        fi
+
+        srcotajson=.tmp/lineageos-$DEVICE_ID.ota.json
+        echo $buildjsonchunk | jq --arg OTA_VERSION $OTA_VERSION '.files[] | select(.date == $OTA_VERSION)' | tee $srcotajson
+        OTA_TARGET=$(jq -r '.filename | split(".zip")[0]' $srcotajson)
+        OTA_URL=$(jq -r '.url' $srcotajson)
+        OTA_TARGET_SHA256=$(jq -r '.sha256' $srcotajson)
+        ;;
+
+      microG)
+        printRed "LINEAGE_TYPE $LINEAGE_TYPE not yet supported! Maybe in the future! At least they have a download site at https://download.lineage.microg.org/"
+        exit 1
+        ;;
+
+      *)
+        printRed "LINEAGE_TYPE $LINEAGE_TYPE is not recognized!"
+        exit 1
+        ;;
+    esac
   fi
-  GRAPHENE_TYPE=${GRAPHENE_TYPE:-'ota_update'} # Other option: factory
-  OTA_TARGET="$DEVICE_ID-$GRAPHENE_TYPE-$OTA_VERSION"
-  OTA_URL="$OTA_BASE_URL/$OTA_TARGET.zip"
-  # e.g.  shiba-ota_update-2023121200
   print "OTA target: $OTA_TARGET; OTA URL: $OTA_URL"
 }
 
@@ -328,16 +387,25 @@ function patchOTAs() {
       if [[ "$flavor" == 'magisk' ]]; then
         args+=("--patch-arg=--magisk" "--patch-arg" ".tmp/magisk-$MAGISK_VERSION.apk")
         args+=("--patch-arg=--magisk-preinit-device" "--patch-arg" "$MAGISK_PREINIT_DEVICE")
+      else
+        args+=("--patch-arg=--rootless")
+      fi
+      if [ -n "$LINEAGE_TYPE" ]; then
+        args+=("--patch-arg=--clear-vbmeta-flags") # LineageOS needs this: Verified boot is disabled by vbmeta's header flags: 0x3
       fi
 
-      # If env vars not set, passphrases will be queried interactively
-      if [ -v PASSPHRASE_AVB ]; then
-        args+=("--pass-avb-env-var" "PASSPHRASE_AVB")
+      # If env vars not set, passphrases will be queried now!
+      if [ ! -v PASSPHRASE_AVB ]; then
+        read -s -p "This is $0, please enter your AVB password! " PASSPHRASE_AVB
+        echo
       fi
+      args+=("--pass-avb-env-var" "PASSPHRASE_AVB")
 
-      if [ -v PASSPHRASE_OTA ]; then
-        args+=("--pass-ota-env-var" "PASSPHRASE_OTA")
+      if [ ! -v PASSPHRASE_OTA ]; then
+        read -s -p "This is $0, please enter your OTA password! " PASSPHRASE_OTA
+        echo
       fi
+      args+=("--pass-ota-env-var" "PASSPHRASE_OTA")
 
       if [[ "${SKIP_MODULES}" != 'true' ]]; then
         args+=("--module-custota" ".tmp/custota.zip")
