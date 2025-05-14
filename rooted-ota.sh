@@ -62,9 +62,33 @@ SKIP_MODULES=${SKIP_MODULES:-'false'}
 # Upload OTA to test folder on OTA server
 UPLOAD_TEST_OTA=${UPLOAD_TEST_OTA:-false}
 
-OTA_CHANNEL=${OTA_CHANNEL:-stable} # Alternative: 'alpha'
 NO_COLOR=${NO_COLOR:-''}
-OTA_BASE_URL="https://releases.grapheneos.org"
+OTA_VENDOR=${OTA_VENDOR:-graphene} # graphene, lineage, ...
+case $OTA_VENDOR in
+  graphene)
+    OTA_TYPE=${OTA_TYPE:-'ota_update'} # Other option: factory
+    OTA_BASE_URL=${OTA_BASE_URL:-"https://releases.grapheneos.org"}
+    OTA_CHANNEL=${OTA_CHANNEL:-stable} # Alternative: 'alpha'
+    ;;
+  lineage)
+    OTA_TYPE=${OTA_TYPE:-'nightly'} # Other option: microG (not really supported yet)
+    OTA_BASE_URL=${OTA_BASE_URL:-"https://download.lineageos.org/api/v2"}
+    if [ -n "$OTA_CHANNEL" ]; then
+      echo "Unsetting unused OTA_CHANNEL $OTA_CHANNEL for LineageOS"
+      unset OTA_CHANNEL
+    fi
+    ;;
+  *)
+    if [ -z "$OTA_TYPE" ]; then
+      echo "No default OTA_TYPE for unrecognized OTA_VENDOR $OTA_VENDOR"
+      exit 1
+    fi
+    if [ -z "$OTA_BASE_URL" ]; then
+      echo "No default OTA_BASE_URL for unrecognized OTA_VENDOR $OTA_VENDOR"
+      exit 1
+    fi
+    ;;
+esac
 
 # renovate: datasource=github-releases packageName=chenxiaolong/avbroot versioning=semver
 AVB_ROOT_VERSION=3.16.0
@@ -239,7 +263,12 @@ function downloadAndroidDependencies() {
   fi
 
   if ! ls ".tmp/$OTA_TARGET.zip" >/dev/null 2>&1; then
+    print "Downloading OTA from $OTA_URL"
     curl --fail -sLo ".tmp/$OTA_TARGET.zip" "$OTA_URL"
+  fi
+
+  if [ -n "$OTA_TARGET_SHA256" ]; then
+    echo "$OTA_TARGET_SHA256  .tmp/$OTA_TARGET.zip" | sha256sum -c
   fi
 }
 
@@ -251,16 +280,75 @@ function findLatestVersion() {
   fi
   print "Magisk version: $MAGISK_VERSION"
 
-  # Search for a new version grapheneos.
-  # e.g. https://releases.grapheneos.org/shiba-stable
+  OTA_TARGET_SHA256=
 
-  if [[ "$OTA_VERSION" == 'latest' ]]; then
-    OTA_VERSION=$(curl --fail -sL "$OTA_BASE_URL/$DEVICE_ID-$OTA_CHANNEL" | head -n1 | awk '{print $1;}')
-  fi
-  GRAPHENE_TYPE=${GRAPHENE_TYPE:-'ota_update'} # Other option: factory
-  OTA_TARGET="$DEVICE_ID-$GRAPHENE_TYPE-$OTA_VERSION"
-  OTA_URL="$OTA_BASE_URL/$OTA_TARGET.zip"
-  # e.g.  shiba-ota_update-2023121200
+  case $OTA_VENDOR in
+    graphene)
+      # Search for a new version grapheneos.
+      # e.g. https://releases.grapheneos.org/shiba-stable
+
+      if [[ "$OTA_VERSION" == 'latest' ]]; then
+        OTA_VERSION=$(curl --fail -sL "$OTA_BASE_URL/$DEVICE_ID-$OTA_CHANNEL" | head -n1 | awk '{print $1;}')
+      fi
+      OTA_TARGET="$DEVICE_ID-$OTA_TYPE-$OTA_VERSION"
+      OTA_URL="$OTA_BASE_URL/$OTA_TARGET.zip"
+      # e.g.  shiba-ota_update-2023121200
+      ;;
+
+    lineage)
+      case $OTA_TYPE in
+
+        nightly)
+          # Search for a new version lineageos at "${OTA_BASE_URL}/devices/${DEVICE_ID}/builds"
+          # e.g. https://download.lineageos.org/api/v2/devices/Spacewar/builds
+
+          # Please note that LineageOS nightly builds may have different dates for different devices!
+          # curl -s https://download.lineageos.org/api/v2/devices/Spacewar/builds | jq -r 'map(select(.type == "nightly")) | sort_by(.version, .date) | last | .version, .date, .type '
+          # 22.2
+          # 2025-04-23
+          # nightly
+          # curl -s https://download.lineageos.org/api/v2/devices/shiba/builds | jq -r 'map(select(.type == "nightly")) | sort_by(.version, .date) | last | .version, .date, .type '
+          # 22.2
+          # 2025-04-20
+          # nightly
+          mkdir -p .tmp
+          buildjson=.tmp/download-lineageos-$DEVICE_ID.json
+          curl --fail -sLo $buildjson "${OTA_BASE_URL}/devices/${DEVICE_ID}/builds"
+
+          if [[ "$OTA_VERSION" == 'latest' ]]; then
+            OTA_VERSION=$(jq --arg OTA_TYPE $OTA_TYPE -r 'map(select(.type == $OTA_TYPE)) | sort_by(.version, .date) | last | .date' $buildjson)
+          fi
+          buildjsonchunk="$(jq --arg OTA_TYPE nightly --arg OTA_VERSION $OTA_VERSION 'map(select(.type == $OTA_TYPE and .date == $OTA_VERSION)) | sort_by(.version, .date) | last ' -- $buildjson)"
+
+          if [ "null" == "$buildjsonchunk" ]; then
+            printRed "Version $OTA_VERSION for device $DEVICE_ID is missing! Try the archive yourself: https://lineage-archive.timschumi.net/"
+            exit 1
+          fi
+
+          srcotajson=.tmp/lineageos-$DEVICE_ID.ota.json
+          echo $buildjsonchunk | jq --arg OTA_VERSION $OTA_VERSION '.files[] | select(.date == $OTA_VERSION)' | tee $srcotajson
+          OTA_TARGET=$(jq -r '.filename | split(".zip")[0]' $srcotajson)
+          OTA_URL=$(jq -r '.url' $srcotajson)
+          OTA_TARGET_SHA256=$(jq -r '.sha256' $srcotajson)
+          ;;
+
+        microG)
+          printRed "LINEAGE_TYPE $LINEAGE_TYPE not yet supported! Maybe in the future! At least they have a download site at https://download.lineage.microg.org/"
+          exit 1
+          ;;
+
+        *)
+          printRed "LINEAGE_TYPE $LINEAGE_TYPE is not recognized!"
+          exit 1
+          ;;
+      esac
+      ;;
+
+    *)
+      printRed "Unrecognized OTA_TYPE $OTA_TYPE in findLatestVersion()"
+      exit 1
+      ;;
+    esac
   print "OTA target: $OTA_TARGET; OTA URL: $OTA_URL"
 }
 
@@ -328,6 +416,15 @@ function patchOTAs() {
       if [[ "$flavor" == 'magisk' ]]; then
         args+=("--patch-arg=--magisk" "--patch-arg" ".tmp/magisk-$MAGISK_VERSION.apk")
         args+=("--patch-arg=--magisk-preinit-device" "--patch-arg" "$MAGISK_PREINIT_DEVICE")
+      fi
+      if [ -n "$OTA_VENDOR" ]; then
+        args+=("--patch-arg=--clear-vbmeta-flags") # LineageOS needs this: Verified boot is disabled by vbmeta's header flags: 0x3
+        if [[ "$flavor" == 'rootless' ]]; then
+          # With the usage of "--clear-vbmeta-flags", the "--rootless" flag cannot be skipped:
+          # error: the following required arguments were not provided:
+          #   <--magisk <FILE>|--prepatched <FILE>|--rootless>
+          args+=("--patch-arg=--rootless")
+        fi
       fi
 
       # If env vars not set, passphrases will be queried interactively
