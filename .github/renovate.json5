@@ -1,37 +1,42 @@
 {
-  $schema: "https://docs.renovatebot.com/renovate-schema.json",
+  $schema: 'https://docs.renovatebot.com/renovate-schema.json',
   extends: [
-  "config:recommended",
-  ":dependencyDashboard"
+    'config:recommended',
+    ':dependencyDashboard',
   ],
   prHourlyLimit: 0,
-  labels: ["dependencies"],
+  labels: [
+    'dependencies',
+  ],
   vulnerabilityAlerts: {
-   labels: ["security", "dependencies"],
+    labels: [
+      'security',
+      'dependencies',
+    ],
   },
   packageRules: [
     {
-      matchPackageNames: ["*"],
-      description: "Automatically merge minor and patch-level updates",
-      matchUpdateTypes: ["minor", "patch" ],
+      matchPackageNames: [
+        '*',
+      ],
+      description: 'Automatically merge minor and patch-level updates',
+      matchUpdateTypes: [
+        'minor',
+        'patch',
+      ],
       automerge: true,
     },
   ],
   customManagers: [
     {
-      customType: "regex",
-      fileMatch: ["rooted-ota.sh"],
+      customType: 'regex',
+      managerFilePatterns: [
+        '/rooted-ota.sh/',
+      ],
       matchStrings: [
-        // Match lines like these:
-        // # renovate: datasource=github-releases packageName=chenxiaolong/avbroot versioning=semver
-        //AVB_ROOT_VERSION=3.9.0
-        // See https://docs.renovatebot.com/modules/manager/regex/
-        "# renovate: datasource=(?<datasource>[a-z-]+?)(?: depName=(?<depName>.+?))? packageName=(?<packageName>.+?)(?: versioning=(?<versioning>[a-z-]+?))?\\s.+?_VERSION=(?<currentValue>.+?)\\s",
-        // # renovate: datasource=git-refs packageName=https://github.com/chenxiaolong/my-avbroot-setup currentValue=master
-        //PATCH_PY_COMMIT=334e506d
-        // https://docs.renovatebot.com/modules/datasource/git-refs/
-        "# renovate: datasource=(?<datasource>[a-z-]+?)(?: depName=(?<depName>.+?))? packageName=(?<packageName>.+?)(?: currentValue=(?<currentValue>[a-z-]+?))?\\s.+?_COMMIT=(?<currentDigest>.+?)\\s",
-        ]
-    }
-  ]
+        '# renovate: datasource=(?<datasource>[a-z-]+?)(?: depName=(?<depName>.+?))? packageName=(?<packageName>.+?)(?: versioning=(?<versioning>[a-z-]+?))?\\s.+?_VERSION=(?<currentValue>.+?)\\s',
+        '# renovate: datasource=(?<datasource>[a-z-]+?)(?: depName=(?<depName>.+?))? packageName=(?<packageName>.+?)(?: currentValue=(?<currentValue>[a-z-]+?))?\\s.+?_COMMIT=(?<currentDigest>.+?)\\s',
+      ],
+    },
+  ],
 }
