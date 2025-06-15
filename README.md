@@ -27,6 +27,22 @@ As they do most of the heavy lifting, I think they deserve every support they ca
 These are only changes related to rooted-graphene, not GrapheneOS itself.  
 See [grapheneos.org/releases](https://grapheneos.org/releases) for that.
 
+### dbbe649, May 22, 2025
+
+Upgrades to magisk 29. 
+
+There seems to be a bug that can occur with magisk updates and avbroot.
+
+[chenxiaolong/avbroot#455 (comment)](https://github.com/chenxiaolong/avbroot/issues/455#issuecomment-2955973508) 
+
+contains some approaches to troubleshooting.
+This worked for me (at the expense of resetting Magisk's settings);
+```bash
+su -c 'rm -r /data/adb/magisk* && reboot'
+```
+
+See also [rooted-graphene#5](https://github.com/rooted-graphene/ota/issues/5).
+
 ### 2025032500
 
 The OTA builds moved into a separate GitHub organization to get full GitHub action minutes budget.  
