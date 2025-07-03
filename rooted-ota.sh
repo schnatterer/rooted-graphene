@@ -67,7 +67,7 @@ NO_COLOR=${NO_COLOR:-''}
 OTA_BASE_URL="https://releases.grapheneos.org"
 
 # renovate: datasource=github-releases packageName=chenxiaolong/avbroot versioning=semver
-AVB_ROOT_VERSION=3.17.0
+AVB_ROOT_VERSION=3.17.2
 # renovate: datasource=github-releases packageName=chenxiaolong/Custota versioning=semver-coerced
 CUSTOTA_VERSION=5.11
 # renovate: datasource=git-refs packageName=https://github.com/chenxiaolong/my-avbroot-setup currentValue=master
