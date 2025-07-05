@@ -7,7 +7,7 @@ Allows for switching between magisk and rootless via OTA upgrades.
 
 > ⚠️ OS and root work in general. However, zygisk does not (and [likely never will](https://github.com/topjohnwu/Magisk/pull/7606)) 
 > work, leading to magisk being easily discovered by other apps and lots of banking apps not working.  
- See [bellow](#using-other-rooting-mechanisms) for alternatives.
+ See [below](#using-other-rooting-mechanisms) for alternatives.
 
 ## Supported devices
 
@@ -111,7 +111,7 @@ Some more details:
 
 ##### Web Installer
 
-Using the web installier is easier, but will always install the latest version. 
+Using the web installer is easier, but will always install the latest version. 
 So it's not possible to verify if OTA upgrades work right away.
 
 Use the [web installer](https://grapheneos.org/install/web) to install GrapheneOS:
