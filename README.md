@@ -104,6 +104,7 @@ Some more details:
 > * might be able to bypass it by pressing the power button or
 > * could try flashing the rootless variant first and then  
 >   either flash/sideload the rooted variant (again) or [switch to root via OTA](#switching-between-root-and-rootless).
+> * or flash the OTA, switch partitions, flash it again. Then sideload the OTA on both partitions *before* flashing custom keys (see farewelltospring's [comment](https://github.com/schnatterer/rooted-graphene/issues/96#issuecomment-2986363782) in [#96](https://github.com/schnatterer/rooted-graphene/issues/96) for details).
 > 
 > See [#89](https://github.com/schnatterer/rooted-graphene/issues/89) and [#96](https://github.com/schnatterer/rooted-graphene/issues/96) for details. 
 
