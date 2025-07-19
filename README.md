@@ -27,6 +27,16 @@ As they do most of the heavy lifting, I think they deserve every support they ca
 These are only changes related to rooted-graphene, not GrapheneOS itself.  
 See [grapheneos.org/releases](https://grapheneos.org/releases) for that.
 
+### b7a9738, July 10, 2025
+
+Upgrade to Custota 5.12, which contained a major regression where settings did not get migrated properly and got reset.
+Unfortunately, you will have to set the OTA URL again, to get the next update.
+
+[Fixed with Custota 5.13](https://github.com/chenxiaolong/Custota/blob/v5.13/CHANGELOG.md), 6dc6c4f on July 18, 2025.
+
+> * Updating to this version will automatically restore the old settings without any manual intervention
+> * If noticed your settings get reset in 5.12 and already reconfigured the app, your new settings will not be touched.
+
 ### dbbe649, May 22, 2025
 
 Upgrades to magisk 29. 
