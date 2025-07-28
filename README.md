@@ -118,6 +118,12 @@ Some more details:
 > 
 > See [#89](https://github.com/schnatterer/rooted-graphene/issues/89) and [#96](https://github.com/schnatterer/rooted-graphene/issues/96) for details. 
 
+⚠️ Please be aware that there is always some risk involved when flashing your device. 
+ It is unlikely but not unheard of to [hard brick](https://github.com/schnatterer/rooted-graphene/issues/96#issuecomment-3123443894) your device.
+Please be careful. 
+I just provide this software. 
+Use it at your own risk. 
+
 #### Install GrapheneOS
 
 ##### Web Installer
