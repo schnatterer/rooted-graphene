@@ -110,16 +110,19 @@ Some more details:
 
 ### Installation
 
-> ⚠️ In case you encounter an error on boot saying `Device is corrupt. It can't be trusted` you
-> * might be able to bypass it by pressing the power button or
-> * could try flashing the rootless variant first and then  
->   either flash/sideload the rooted variant (again) or [switch to root via OTA](#switching-between-root-and-rootless).
-> * or flash the OTA, switch partitions, flash it again. Then sideload the OTA on both partitions *before* flashing custom keys (see farewelltospring's [comment](https://github.com/schnatterer/rooted-graphene/issues/96#issuecomment-2986363782) in [#96](https://github.com/schnatterer/rooted-graphene/issues/96) for details).
-> 
-> See [#89](https://github.com/schnatterer/rooted-graphene/issues/89) and [#96](https://github.com/schnatterer/rooted-graphene/issues/96) for details. 
+It seems that [since 2025032500](https://github.com/schnatterer/rooted-graphene/issues/89) all first time installations (not the OTA updates later!) 
+encounter an error on boot saying `Device is corrupt. It can't be trusted`.
+
+A lot of reports in the issues suggest that the most successful way to avoid it is to follow the instructions below 
+until you encounter the error and then sideload the OTA *before* flashing custom keys. 
+
+See [this](https://github.com/schnatterer/rooted-graphene/issues/96#issuecomment-3128121844) and [that](https://github.com/schnatterer/rooted-graphene/issues/96#issuecomment-2986363782) comment for details.
+
+[Maybe it would be even simpler to just `adb sideload` the rooted-graphene OTA straight after GrapehenOS](https://github.com/schnatterer/rooted-graphene/issues/96#issuecomment-3128121844). If you are feeling courageous to try please report back via discussions or a PR to this README.
 
 ⚠️ Please be aware that there is always some risk involved when flashing your device. 
  It is unlikely but not unheard of to [hard brick](https://github.com/schnatterer/rooted-graphene/issues/96#issuecomment-3123443894) your device.
+ If flashing fails, [**don't switch the slot**](https://github.com/schnatterer/rooted-graphene/issues/96#issuecomment-3128121844).
 Please be careful. 
 I just provide this software. 
 Use it at your own risk. 
