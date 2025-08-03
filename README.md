@@ -251,7 +251,7 @@ And then upgrade.
 
 ## Magisk preinit strings
 
-See [release-multiple.yaml](.github/workflows/release-multiple.yaml) for examples.
+See [release-multiple.yaml](https://github.com/rooted-graphene/ota/blob/main/.github/workflows/release-multiple.yaml) for examples.
 
 How to extract:
 
