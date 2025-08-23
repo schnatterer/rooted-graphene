@@ -386,6 +386,16 @@ function base642key() {
 }
 
 function releaseOta() {
+
+  createReleaseIfNecessary
+  
+  for flavor in "${!POTENTIAL_ASSETS[@]}"; do
+    local assetName="${POTENTIAL_ASSETS[$flavor]}"
+    uploadFile ".tmp/$assetName" "$assetName" "application/zip"
+  done
+}
+
+function createReleaseIfNecessary() {
   checkMandatoryVariable 'GITHUB_REPO' 'GITHUB_TOKEN'
 
   local response changelog src_repo current_commit 
@@ -438,11 +448,6 @@ function releaseOta() {
       exit 1
     fi
   fi
-
-  for flavor in "${!POTENTIAL_ASSETS[@]}"; do
-    local assetName="${POTENTIAL_ASSETS[$flavor]}"
-    uploadFile ".tmp/$assetName" "$assetName" "application/zip"
-  done
 }
 
 function uploadFile() {
