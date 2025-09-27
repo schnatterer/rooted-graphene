@@ -27,7 +27,24 @@ As they do most of the heavy lifting, I think they deserve every support they ca
 These are only changes related to rooted-graphene, not GrapheneOS itself.  
 See [grapheneos.org/releases](https://grapheneos.org/releases) for that.
 
-### b7a9738, July 10, 2025
+### [#173](https://github.com/schnatterer/rooted-graphene/pull/173), Sept 27, 2025
+Rooted-graphene opts-in to use the `stable-security-preview`.
+
+Basically, this gets us security fixes a lot faster at the cost of patches not being open source at the moment of release.
+
+The fact that rooted-graphene is patched into the original OTA binaries and not built from source makes this possible.
+If you prefer staying with `stable` you can easily [set up your own builds](#setting-up-your-own-ota-builds) and set 
+`OTA_CHANNEL` to `stable`.
+
+More info: 
+> We're allowed to provide an early release with these patches and to list the CVEs but must wait until the embargo ends to publish sources or details on the patches.
+> The positive side is that we can now provide patches to people who truly need them without even the previous 1 month embargo delay.
+https://grapheneos.org/releases#2025092500
+
+> We do consider the security previews to be the normal and recommended choice.
+https://grapheneos.social/@GrapheneOS/115272851393143127
+
+### [#141](https://github.com/schnatterer/rooted-graphene/pull/141), July 10, 2025
 
 Upgrade to Custota 5.12, which contained a major regression where settings did not get migrated properly and got reset.
 Unfortunately, you will have to set the OTA URL again, to get the next update.
@@ -37,7 +54,7 @@ Unfortunately, you will have to set the OTA URL again, to get the next update.
 > * Updating to this version will automatically restore the old settings without any manual intervention
 > * If noticed your settings get reset in 5.12 and already reconfigured the app, your new settings will not be touched.
 
-### dbbe649, May 22, 2025
+### [#114](https://github.com/schnatterer/rooted-graphene/pull/114), May 22, 2025
 
 Upgrades to magisk 29. 
 
@@ -111,12 +128,12 @@ Some more details:
 ### Installation
 
 It seems that [since 2025032500](https://github.com/schnatterer/rooted-graphene/issues/89) all first time installations (not the OTA updates later!) 
-encounter an error on boot saying `Device is corrupt. It can't be trusted`.
+have encountered an error on boot saying `Device is corrupt. It can't be trusted`.
 
 A lot of reports in the issues suggest that the most successful way to avoid it is to follow the instructions below 
 until you encounter the error and then sideload the OTA *before* flashing custom keys. 
 
-See [this](https://github.com/schnatterer/rooted-graphene/issues/96#issuecomment-3128121844) and [that](https://github.com/schnatterer/rooted-graphene/issues/96#issuecomment-2986363782) comment for details.
+See [this](https://github.com/schnatterer/rooted-graphene/issues/96#issuecomment-3128121844) and [that](https://github.com/schnatterer/rooted-graphene/issues/96#issuecomment-2986363782) comments for details.
 
 [Maybe it would be even simpler to just `adb sideload` the rooted-graphene OTA straight after GrapehenOS](https://github.com/schnatterer/rooted-graphene/issues/96#issuecomment-3128121844). If you are feeling courageous to try please report back via discussions or a PR to this README.
 
