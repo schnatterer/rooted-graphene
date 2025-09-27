@@ -62,7 +62,7 @@ SKIP_MODULES=${SKIP_MODULES:-'false'}
 # Upload OTA to test folder on OTA server
 UPLOAD_TEST_OTA=${UPLOAD_TEST_OTA:-false}
 
-OTA_CHANNEL=${OTA_CHANNEL:-stable} # Alternative: 'alpha'
+OTA_CHANNEL=${OTA_CHANNEL:-stable-security-preview} # Alternative: 'stable' or 'alpha'
 NO_COLOR=${NO_COLOR:-''}
 OTA_BASE_URL="https://releases.grapheneos.org"
 
