@@ -127,22 +127,18 @@ Some more details:
 
 ### Installation
 
-It seems that [since 2025032500](https://github.com/schnatterer/rooted-graphene/issues/89) all first time installations (not the OTA updates later!) 
-have encountered an error on boot saying `Device is corrupt. It can't be trusted`.
+⚠️ Please be aware that there is always some risk involved when flashing your device.  
+Especially since the first `Device is corrupt. It can't be trusted` messages started appearing in [2025032500](https://github.com/schnatterer/rooted-graphene/issues/89).  
+In relation to this error,
+we heard [multiple](https://github.com/schnatterer/rooted-graphene/issues/96#issuecomment-3123443894) [reports](https://github.com/schnatterer/rooted-graphene/issues/96#issuecomment-3358048965) about hard bricks.  
+The steps listed below should work around this issue, though.
 
-A lot of reports in the issues suggest that the most successful way to avoid it is to follow the instructions below 
-until you encounter the error and then sideload the OTA *before* flashing custom keys. 
+Still, if flashing fails, [**don't switch the slot**](https://github.com/schnatterer/rooted-graphene/issues/96#issuecomment-3128121844).  
+Read through the comments on [this issue](https://github.com/schnatterer/rooted-graphene/issues/96) or reach out for help.
 
-See [this](https://github.com/schnatterer/rooted-graphene/issues/96#issuecomment-3128121844) and [that](https://github.com/schnatterer/rooted-graphene/issues/96#issuecomment-2986363782) comments for details.
-
-[Maybe it would be even simpler to just `adb sideload` the rooted-graphene OTA straight after GrapehenOS](https://github.com/schnatterer/rooted-graphene/issues/96#issuecomment-3128121844). If you are feeling courageous to try please report back via discussions or a PR to this README.
-
-⚠️ Please be aware that there is always some risk involved when flashing your device. 
- It is unlikely but not unheard of to [hard brick](https://github.com/schnatterer/rooted-graphene/issues/96#issuecomment-3123443894) your device.
- If flashing fails, [**don't switch the slot**](https://github.com/schnatterer/rooted-graphene/issues/96#issuecomment-3128121844).
-Please be careful. 
-I just provide this software. 
-Use it at your own risk. 
+Be careful!
+I only provide this software.
+You are using it at your own risk.
 
 #### Install GrapheneOS
 
@@ -221,16 +217,18 @@ Once GrapheneOS is installed
     curl -s https://raw.githubusercontent.com/rooted-graphene/ota/refs/heads/main/avb_pkmd.bin > avb_pkmd.bin
     fastboot flash avb_custom_key avb_pkmd.bin
     ```
-* **[Optional]** Before locking the bootloader, reboot into Android once to confirm that everything is properly signed.  
-   Install the Magisk or KernelSU app and run the following command:
-    ```bash
-    adb shell su -c 'dmesg | grep libfs_avb'
-    ```
-   If AVB is working properly, the following message should be printed out:
-    ```bash
-    init: [libfs_avb]Returning avb_handle with status: Success
-    ```
-* Reboot back into fastboot and lock the bootloader. This will trigger a data wipe again.
+* Sideload the OTA  
+  (to avoid `Device is corrupt. It can't be trusted` error)
+   1. Run `fastboot reboot recovery` to get into recovery mode
+   2. You should see an android icon lying down with the text "No command".  
+      Hold the power button and press the volume up button a single time to get into the recovery GUI
+   3. Use volume buttons to navigate to "Apply update from ADB" and select it with the power button
+   4. Like the recovery prompt says, use  
+      `adb sideload <path to ota zip>`  
+       to sideload the OTA
+   5. After sideloading, select reboot to bootloader
+* Lock the bootloader using the following command.
+  This will trigger a data wipe again.
     ```bash
     fastboot flashing lock
     ```
