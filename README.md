@@ -134,7 +134,8 @@ we heard [multiple](https://github.com/schnatterer/rooted-graphene/issues/96#iss
 The steps listed below should work around this issue, though.
 
 Still, if flashing fails, [**don't switch the slot**](https://github.com/schnatterer/rooted-graphene/issues/96#issuecomment-3128121844).  
-Read through the comments on [this issue](https://github.com/schnatterer/rooted-graphene/issues/96) or reach out for help.
+Read through the comments on [this issue](https://github.com/schnatterer/rooted-graphene/issues/96) or reach out for help.  
+In case your device should refuse to boot, [this project](https://github.com/JoshuaDoes/tensor-usbdl/) might be helpful. 
 
 Be careful!
 I only provide this software.
