@@ -212,6 +212,7 @@ Once GrapheneOS is installed
   fastboot flashall --skip-reboot
   ```
 * Set up the custom AVB public key in the bootloader.
+  (If you built your own OTA, use your `avb_pkmd.bin`.)
     ```bash
     fastboot reboot-bootloader
     fastboot erase avb_custom_key
