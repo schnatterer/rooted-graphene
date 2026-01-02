@@ -159,6 +159,13 @@ Alternative method to Web installer.
 
 Download [**factory image**](https://grapheneos.org/releases) and follow the [official instructions](https://grapheneos.org/install/cli)  to install GrapheneOS.
 
+**When downloading the "Install zip", change the last digit in the URL from `0` to `1`!**
+
+This way you get the [security-preview version](#173-sept-27-2025) right away and won't have to switch after installation.
+
+e.g. from `https://releases.grapheneos.org/tegu-install-2025122500.zip`  
+to `https://releases.grapheneos.org/tegu-install-2025122501.zip`
+
 TLDR:
 
 * Enable OEM unlocking
@@ -181,7 +188,7 @@ TLDR:
 
 Once GrapheneOS is installed
 
-* Download the [OTA from releases](https://github.com/rooted-graphene/ota/releases) with **the same version** that you just installed. 
+* Download the [OTA from releases](https://github.com/rooted-graphene/ota/releases) with **the same version** (except `00` at the end is `01`, see [security-preview](#173-sept-27-2025)) that you just installed. 
 * Obtain latest `fastboot`
 * Install [avbroot](https://github.com/chenxiaolong/avbroot)
 * Extract the partition images from the patched OTA that are different from the original.
@@ -229,6 +236,9 @@ Once GrapheneOS is installed
       `adb sideload <path to ota zip>`  
        to sideload the OTA
    5. After sideloading, select reboot to bootloader
+* If you installed using the web installer (or installed manually without security-preview) start the device and switch to the security-preview version during the startup wizard.  
+  Then return to the bootloader (e.g. by using the volume button).  
+  See [anouncement](#173-sept-27-2025) and [#202](https://github.com/schnatterer/rooted-graphene/issues/202#issuecomment-3620623595) for details.  
 * Lock the bootloader using the following command.
   This will trigger a data wipe again.
     ```bash
