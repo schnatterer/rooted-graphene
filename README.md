@@ -253,7 +253,7 @@ Once GrapheneOS is installed
 
 #### Set up OTA updates
 
-* [Disable system updater app](https://github.com/chenxiaolong/avbroot#ota-updates).
+* [Disable System Updater app](https://github.com/chenxiaolong/avbroot#ota-updates) (or block its network access) from Settings -> Apps -> See all apps -> (three-dot menu) -> Show system -> (find "System Updater" app).
 * Open Custota app and set the OTA server URL to point to this OTA server: https://rooted-graphene.github.io/ota/magisk
 
 Alternatively you could do updates manually via `adb sideload`:
