@@ -20,7 +20,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
       - name: Self-hosted Renovate
-        uses: renovatebot/github-action@3633cede7d4d4598438e654eac4a695e46004420 # v46.1.7
+        uses: renovatebot/github-action@b67590ea780158ccd13192c22a3655a5231f869d # v46.1.8
         with:
           configurationFile: .github/renovate.json5
           # https://docs.renovatebot.com/modules/platform/github/#running-using-a-fine-grained-token
