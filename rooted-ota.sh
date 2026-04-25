@@ -71,7 +71,7 @@ AVB_ROOT_VERSION=3.29.1
 # renovate: datasource=github-releases packageName=chenxiaolong/Custota versioning=semver-coerced
 CUSTOTA_VERSION=5.21
 # renovate: datasource=git-refs packageName=https://github.com/chenxiaolong/my-avbroot-setup currentValue=master
-PATCH_PY_COMMIT=84139189c8cbe244a676582a3b3517f31fabc421
+PATCH_PY_COMMIT=e59576e1f729fac00a56baff848b1c442ea36d6d
 # renovate: datasource=docker packageName=python
 PYTHON_VERSION=3.14.4-alpine
 # renovate: datasource=github-releases packageName=chenxiaolong/OEMUnlockOnBoot versioning=semver-coerced
