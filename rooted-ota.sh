@@ -75,7 +75,7 @@ PATCH_PY_COMMIT=84139189c8cbe244a676582a3b3517f31fabc421
 # renovate: datasource=docker packageName=python
 PYTHON_VERSION=3.14.6-alpine
 # renovate: datasource=github-releases packageName=chenxiaolong/OEMUnlockOnBoot versioning=semver-coerced
-OEMUNLOCKONBOOT_VERSION=1.3
+OEMUNLOCKONBOOT_VERSION=1.4
 # renovate: datasource=github-releases packageName=chenxiaolong/afsr versioning=semver
 AFSR_VERSION=1.0.4
 
