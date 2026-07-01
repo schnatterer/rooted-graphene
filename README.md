@@ -169,7 +169,7 @@ to `https://releases.grapheneos.org/tegu-install-2025122501.zip`
 TLDR:
 
 * Enable OEM unlocking
-* Obtain latest `fastboot`
+* Obtain latest `fastboot` (version >= 35.0.1, as earlier ones have issues with flashing dynamic partitions. GrapheneOS's [flash-all.sh](https://github.com/GrapheneOS/device_common/blob/1f5ba2671e4b04e3bd8899b3df2c5e30a894b35c/generate-factory-images-common.sh#L98) also enforces this)
 * Unlock Bootloader:
   Enable usb debugging and execute `adb reboot bootloader`, or
   > The easiest approach is to reboot the device and begin holding the volume down button until it boots up into the bootloader interface.
