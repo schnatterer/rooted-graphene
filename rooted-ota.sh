@@ -350,16 +350,19 @@ function patchOTAs() {
       # Python image is designed to run as root, so chown the files it creates back at the end
       # ... room for improvement 😐️
       # shellcheck disable=SC2046
-      docker run --rm -i $(tty &>/dev/null && echo '-t') -v "$PWD:/app"  -w /app \
-        -e PATH='/bin:/usr/local/bin:/sbin:/usr/bin/:/app/.tmp' \
-        --env-file <(env) \
-        python:${PYTHON_VERSION} sh -c \
-          "apk add openssh && \
-           pip install -r .tmp/my-avbroot-setup/requirements.txt && \
-           python .tmp/my-avbroot-setup/patch.py ${args[*]} ; result=\$?; \
-           chown -R $(id -u):$(id -g) .tmp; exit \$result"
-    
-       printGreen "Finished patching file ${targetFile}"
+      docker run --rm -i $(tty &>/dev/null && echo '-t') \
+    -v "$PWD:/app" \
+    -w /app \
+    -e PATH='/bin:/usr/local/bin:/sbin:/usr/bin:/app/.tmp' \
+    --env-file <(env) \
+    python:${PYTHON_VERSION} sh -c "set -e && \
+        apk add --no-cache openssh uv && \
+        uv sync --locked --project .tmp/my-avbroot-setup && \
+        uv run --project .tmp/my-avbroot-setup \
+            .tmp/my-avbroot-setup/patch.py ${args[*]} && \
+        chown -R $(id -u):$(id -g) .tmp"
+
+      printGreen "Finished patching file ${targetFile}"
     fi
     
   done
