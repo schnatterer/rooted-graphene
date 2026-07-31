@@ -5,9 +5,10 @@ GrapheneOS over the air updates (OTAs) patched with Magisk allowing for AVB and 
 Can be upgraded over the air using [Custota](https://github.com/chenxiaolong/Custota) and its own OTA server.  
 Allows for switching between magisk and rootless via OTA upgrades.
 
-> ⚠️ OS and root work in general. However, zygisk does not (and [likely never will](https://github.com/topjohnwu/Magisk/pull/7606)) 
+> ⚠️ OS and root work in general. However, with upstream magisk zygisk does not (and [likely never will](https://github.com/topjohnwu/Magisk/pull/7606))
 > work, leading to magisk being easily discovered by other apps and lots of banking apps not working.  
- See [below](#using-other-rooting-mechanisms) for alternatives.
+> As an alternative we offer [pixincreate's magisk](https://github.com/pixincreate/Magisk) that contains patches to make zygisk work. Before using it please note that this way you add another party to your supply chain that basically gains root acces to your device.  
+ See [below](#using-other-rooting-mechanisms) for more details and the reason why kernelsu cannot be integrated easily with this project.
 
 ## Supported devices
 
@@ -367,13 +368,13 @@ Also, some parts of kernelsu seem to be closed source, which feels suspicious an
 Another alternative might be to use a version of magisk (like [the one maintained by pixincreate](https://github.com/pixincreate/Magisk)) that contains patches to make zygisk work.  
 This still has some limitations, like [certain modules checking for magisk's signature won't work](https://github.com/schnatterer/rooted-graphene/commit/da0cd817c2665798df46df1aeb7caef9d98b79d0#r141746606).
 
-This variant can be built as an additional `magisk-pixin` flavor, next to the regular `magisk` and `rootless` ones.  
-It is disabled by default, so it is never silently forced on existing users. Enable it by setting `SKIP_MAGISK_PIXIN=false`
-(or the `skip-magisk-pixin` input in `release-single.yaml`). It requires `MAGISK_PREINIT_DEVICE` to be set, just like the regular magisk flavor,
+This variant can be built as an additional `pixincreate` flavor, next to the regular `magisk` and `rootless` ones.  
+It is disabled by default, so it is never silently forced on existing users. Enable it by setting `SKIP_PIXINCREATE=false`
+(or the `skip-pixincreate` input in `release-single.yaml`). It requires `MAGISK_PREINIT_DEVICE` to be set, just like the regular magisk flavor,
 and it reuses `MAGISK_VERSION`, since the fork uses the same tags as upstream magisk.
 
-The resulting OTAs are published as a separate flavor, so in Custota you would point to the `magisk-pixin` path of your OTA server, e.g.
-`https://rooted-graphene.github.io/ota/magisk-pixin`. As with the other flavors, you can switch between them via OTA updates.
+The resulting OTAs are published as a separate flavor, so in Custota you would point to the `pixincreate` path of your OTA server, e.g.
+`https://rooted-graphene.github.io/ota/pixincreate`. As with the other flavors, you can switch between them via OTA updates.
 
 > ⚠️ By using this flavor you also have to trust the authors of that fork, in addition to everyone listed above.
 Another option [might be](https://github.com/schnatterer/rooted-graphene/pull/73#issuecomment-2666870886) Kitsune magisk.
