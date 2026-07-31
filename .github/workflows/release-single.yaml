@@ -37,7 +37,7 @@ on:
         description: skip building rooted OTA
         type: boolean
         required: false
-      skip-magisk-pixin:
+      skip-pixincreate:
         description: skip building OTA rooted with pixincreate's magisk fork
         type: boolean
         required: false
@@ -90,15 +90,15 @@ jobs:
           echo "SKIP_ROOTLESS=$(echo '${{ github.event.inputs.skip-rootless || '' }}' | xargs)" >> $GITHUB_ENV
           # Note the explicit 'true' fallback: an empty value would enable the flavor,
           # because the script only skips on the literal string "true"
-          echo "SKIP_MAGISK_PIXIN=$(echo '${{ github.event.inputs.skip-magisk-pixin || 'true' }}' | xargs)" >> $GITHUB_ENV
+          echo "SKIP_PIXINCREATE=$(echo '${{ github.event.inputs.skip-pixincreate || 'true' }}' | xargs)" >> $GITHUB_ENV
           echo "SKIP_RELEASE=$(echo '${{ github.event.inputs.skip-release || '' }}' | xargs)" >> $GITHUB_ENV
           
           if [[ "${{ github.event_name }}" == "push" ]]  || [[ "${{ github.event_name }}" == "pull_request" ]]; then
             echo "Running on push: Simple build without release for device $DEVICE_ID"
             echo "FORCE_BUILD=true" >> $GITHUB_ENV
             echo "SKIP_RELEASE=true" >> $GITHUB_ENV
-            # Make sure the magisk-pixin flavor keeps building
-            echo "SKIP_MAGISK_PIXIN=false" >> $GITHUB_ENV
+            # Make sure the pixincreate flavor keeps building
+            echo "SKIP_PIXINCREATE=false" >> $GITHUB_ENV
             echo "GITHUB_TOKEN=must-be-set-but-is-not-used" >> $GITHUB_ENV
           else
             echo "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> $GITHUB_ENV
