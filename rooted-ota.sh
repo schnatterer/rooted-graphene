@@ -71,7 +71,7 @@ AVB_ROOT_VERSION=3.32.2
 # renovate: datasource=github-releases packageName=chenxiaolong/Custota versioning=semver-coerced
 CUSTOTA_VERSION=6.3
 # renovate: datasource=git-refs packageName=https://github.com/chenxiaolong/my-avbroot-setup currentValue=master
-PATCH_PY_COMMIT=e4f80bb54aa5ae8de6109edd7d0873d5b4966748
+PATCH_PY_COMMIT=848deb1311a72fcb9b582cef79e0be558ae64db8
 # renovate: datasource=docker packageName=python
 PYTHON_VERSION=3.14.6-alpine
 # renovate: datasource=github-releases packageName=chenxiaolong/OEMUnlockOnBoot versioning=semver-coerced
@@ -350,16 +350,19 @@ function patchOTAs() {
       # Python image is designed to run as root, so chown the files it creates back at the end
       # ... room for improvement 😐️
       # shellcheck disable=SC2046
-      docker run --rm -i $(tty &>/dev/null && echo '-t') -v "$PWD:/app"  -w /app \
-        -e PATH='/bin:/usr/local/bin:/sbin:/usr/bin/:/app/.tmp' \
-        --env-file <(env) \
-        python:${PYTHON_VERSION} sh -c \
-          "apk add openssh && \
-           pip install -r .tmp/my-avbroot-setup/requirements.txt && \
-           python .tmp/my-avbroot-setup/patch.py ${args[*]} ; result=\$?; \
-           chown -R $(id -u):$(id -g) .tmp; exit \$result"
-    
-       printGreen "Finished patching file ${targetFile}"
+      docker run --rm -i $(tty &>/dev/null && echo '-t') \
+    -v "$PWD:/app" \
+    -w /app \
+    -e PATH='/bin:/usr/local/bin:/sbin:/usr/bin:/app/.tmp' \
+    --env-file <(env) \
+    python:${PYTHON_VERSION} sh -c "set -e && \
+        apk add --no-cache openssh uv && \
+        uv sync --locked --project .tmp/my-avbroot-setup && \
+        uv run --project .tmp/my-avbroot-setup \
+            .tmp/my-avbroot-setup/patch.py ${args[*]} && \
+        chown -R $(id -u):$(id -g) .tmp"
+
+      printGreen "Finished patching file ${targetFile}"
     fi
     
   done
