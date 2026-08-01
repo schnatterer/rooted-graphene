@@ -4,6 +4,7 @@
   "config:best-practices",
   ":dependencyDashboard"
   ],
+  ignorePresets: ["helpers:pinGitHubActionDigests"],
   prHourlyLimit: 0,
   labels: ["dependencies"],
   vulnerabilityAlerts: {
