@@ -37,6 +37,11 @@ on:
         description: skip building rooted OTA
         type: boolean
         required: false
+      skip-pixincreate:
+        description: skip building OTA rooted with pixincreate's magisk fork
+        type: boolean
+        required: false
+        default: true
       upload-test-ota:
         description: Upload OTA to test folder
         required: false
@@ -83,27 +88,48 @@ jobs:
           echo "FORCE_BUILD=$(echo '${{ github.event.inputs.force-build || '' }}' | xargs)" >> $GITHUB_ENV
           echo "UPLOAD_TEST_OTA=$(echo '${{ github.event.inputs.upload-test-ota || '' }}' | xargs)" >> $GITHUB_ENV
           echo "SKIP_ROOTLESS=$(echo '${{ github.event.inputs.skip-rootless || '' }}' | xargs)" >> $GITHUB_ENV
+          # Note the explicit 'true' fallback: an empty value would enable the flavor,
+          # because the script only skips on the literal string "true"
+          echo "SKIP_PIXINCREATE=$(echo '${{ github.event.inputs.skip-pixincreate || 'true' }}' | xargs)" >> $GITHUB_ENV
           echo "SKIP_RELEASE=$(echo '${{ github.event.inputs.skip-release || '' }}' | xargs)" >> $GITHUB_ENV
           
           if [[ "${{ github.event_name }}" == "push" ]]  || [[ "${{ github.event_name }}" == "pull_request" ]]; then
             echo "Running on push: Simple build without release for device $DEVICE_ID"
             echo "FORCE_BUILD=true" >> $GITHUB_ENV
             echo "SKIP_RELEASE=true" >> $GITHUB_ENV
+            # Make sure the pixincreate flavor keeps building
+            echo "SKIP_PIXINCREATE=false" >> $GITHUB_ENV
             echo "GITHUB_TOKEN=must-be-set-but-is-not-used" >> $GITHUB_ENV
           else
             echo "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> $GITHUB_ENV
           fi
       - run: sudo apt-get install -y jq curl git
+      - name: Use dummy keys and certs for PRs
+        # Neither vars nor secrets are exposed to external PRs. 
+        # We still want them to build so generating dummy secrets seems the pragmatic solution 
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork
+        env:
+          AVBROOT_PASS: ci-test-pass
+        run: |
+          DEBUG=1 SKIP_CLEANUP=true bash -c '. rooted-ota.sh && downloadAvBroot'
+          .tmp/avbroot key generate-key --pass-env-var AVBROOT_PASS -o avb.key
+          .tmp/avbroot key generate-key --pass-env-var AVBROOT_PASS -o ota.key
+          .tmp/avbroot key generate-cert --pass-env-var AVBROOT_PASS -k ota.key -o ota.crt
+          echo finished generating dummy keys
+          echo "PASSPHRASE_AVB=$AVBROOT_PASS" >> "$GITHUB_ENV"
+          echo "PASSPHRASE_OTA=$AVBROOT_PASS" >> "$GITHUB_ENV"
+
+          echo "KEY_AVB_BASE64=$(base64 -w0 avb.key)" >> "$GITHUB_ENV"
+          echo "KEY_OTA_BASE64=$(base64 -w0 ota.key)" >> "$GITHUB_ENV"
+          echo "CERT_OTA_BASE64=$(base64 -w0 ota.crt)" >> "$GITHUB_ENV"
       - name: release
         env:
           GITHUB_REPO: ${{ github.repository }}
-          # Load dev keys from vars. This is a random key, only used for signing throwaway dev builds. Not a leak!
-          # Loading the keys from secrets will make them inaccessible for untrusted PRs, leaving us with failed builds.
-          KEY_AVB_BASE64: ${{ vars.KEY_AVB_BASE64 }}
-          CERT_OTA_BASE64: ${{ vars.CERT_OTA_BASE64 }}
-          KEY_OTA_BASE64: ${{ vars.KEY_OTA_BASE64 }}
-          #PASSPHRASE_AVB: ${{ vars.PASSPHRASE_AVB }}
-          #PASSPHRASE_OTA: ${{ vars.PASSPHRASE_OTA }}
+          PASSPHRASE_AVB: ${{ secrets.PASSPHRASE_AVB || env.PASSPHRASE_AVB }}
+          PASSPHRASE_OTA: ${{ secrets.PASSPHRASE_OTA || env.PASSPHRASE_OTA }}
+          KEY_AVB_BASE64: ${{ secrets.KEY_AVB_BASE64 || env.KEY_AVB_BASE64 }}
+          KEY_OTA_BASE64: ${{ secrets.KEY_OTA_BASE64 || env.KEY_OTA_BASE64 }}
+          CERT_OTA_BASE64: ${{ secrets.CERT_OTA_BASE64 || env.CERT_OTA_BASE64 }}
         run: |
           if [[ $SKIP_RELEASE == 'true' ]]; then
             DEBUG=1 bash -c '. rooted-ota.sh && createRootedOta && createOtaServerData'

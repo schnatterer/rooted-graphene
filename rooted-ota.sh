@@ -28,6 +28,12 @@ GITHUB_REPO=${GITHUB_REPO:-''}
 MAGISK_PREINIT_DEVICE=${MAGISK_PREINIT_DEVICE:-}
 # Skip creation of rootless OTA by setting to "true"
 SKIP_ROOTLESS=${SKIP_ROOTLESS:-'false'}
+# In addition to upstream magisk, an OTA can be patched with pixincreate's magisk fork,
+# which contains patches that make zygisk work on GrapheneOS.
+# https://github.com/pixincreate/Magisk
+# Note that modules verifying magisk's signature won't work with this fork.
+# Enable by setting to "false".
+SKIP_PIXINCREATE=${SKIP_PIXINCREATE:-'true'}
 # https://grapheneos.org/releases#stable-channel
 OTA_VERSION=${OTA_VERSION:-'latest'}
 
@@ -144,6 +150,13 @@ function checkBuildNecessary() {
   if [[ -n "$MAGISK_PREINIT_DEVICE" ]]; then 
     # e.g. oriole-2023121200-magisk-v26.4-4647f74-dirty.zip
     POTENTIAL_ASSETS['magisk']="${DEVICE_ID}-${OTA_VERSION}-${currentCommit}-magisk-${MAGISK_VERSION}$(createAssetSuffix).zip"
+
+    if [[ "$SKIP_PIXINCREATE" != 'true' ]]; then
+      # e.g. oriole-2023121200-pixincreate-v30.7-4647f74-dirty.zip
+      POTENTIAL_ASSETS['pixincreate']="${DEVICE_ID}-${OTA_VERSION}-${currentCommit}-pixincreate-${MAGISK_VERSION}$(createAssetSuffix).zip"
+    else
+      printGreen "SKIP_PIXINCREATE set, not creating pixincreate OTA"
+    fi
   else 
     printGreen "MAGISK_PREINIT_DEVICE not set for device, not creating magisk OTA"
   fi
@@ -238,6 +251,11 @@ function downloadAndroidDependencies() {
     curl --fail -sLo ".tmp/magisk-$MAGISK_VERSION.apk" "https://github.com/topjohnwu/Magisk/releases/download/$MAGISK_VERSION/Magisk-$MAGISK_VERSION.apk"
   fi
 
+  # pixincreate's fork releases its APK as "app-release.apk" and uses the same tags as upstream magisk
+  if ! ls ".tmp/pixincreate-$MAGISK_VERSION.apk" >/dev/null 2>&1 && [[ "${POTENTIAL_ASSETS['pixincreate']+isset}" ]]; then
+    curl --fail -sLo ".tmp/pixincreate-$MAGISK_VERSION.apk" "https://github.com/pixincreate/Magisk/releases/download/$MAGISK_VERSION/app-release.apk"
+  fi
+
   if ! ls ".tmp/$OTA_TARGET.zip" >/dev/null 2>&1; then
     curl --fail -sLo ".tmp/$OTA_TARGET.zip" "$OTA_URL"
   fi
@@ -327,6 +345,10 @@ function patchOTAs() {
       args+=("--sign-cert-ota" "$CERT_OTA")
       if [[ "$flavor" == 'magisk' ]]; then
         args+=("--patch-arg=--magisk" "--patch-arg" ".tmp/magisk-$MAGISK_VERSION.apk")
+        args+=("--patch-arg=--magisk-preinit-device" "--patch-arg" "$MAGISK_PREINIT_DEVICE")
+      fi
+      if [[ "$flavor" == 'pixincreate' ]]; then
+        args+=("--patch-arg=--magisk" "--patch-arg" ".tmp/pixincreate-$MAGISK_VERSION.apk")
         args+=("--patch-arg=--magisk-preinit-device" "--patch-arg" "$MAGISK_PREINIT_DEVICE")
       fi
 
