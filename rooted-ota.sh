@@ -28,6 +28,8 @@ GITHUB_REPO=${GITHUB_REPO:-''}
 MAGISK_PREINIT_DEVICE=${MAGISK_PREINIT_DEVICE:-}
 # Skip creation of rootless OTA by setting to "true"
 SKIP_ROOTLESS=${SKIP_ROOTLESS:-'false'}
+# Skip creation of magisk OTA by setting to "true".
+SKIP_MAGISK=${SKIP_MAGISK:-'false'}
 # In addition to upstream magisk, an OTA can be patched with pixincreate's magisk fork,
 # which contains patches that make zygisk work on GrapheneOS.
 # https://github.com/pixincreate/Magisk
@@ -147,9 +149,13 @@ function checkBuildNecessary() {
   currentCommit=$(git rev-parse --short HEAD)
   POTENTIAL_ASSETS=()
     
-  if [[ -n "$MAGISK_PREINIT_DEVICE" ]]; then 
-    # e.g. oriole-2023121200-magisk-v26.4-4647f74-dirty.zip
-    POTENTIAL_ASSETS['magisk']="${DEVICE_ID}-${OTA_VERSION}-${currentCommit}-magisk-${MAGISK_VERSION}$(createAssetSuffix).zip"
+  if [[ -n "$MAGISK_PREINIT_DEVICE" ]]; then
+    if [[ "$SKIP_MAGISK" != 'true' ]]; then
+      # e.g. oriole-2023121200-magisk-v26.4-4647f74-dirty.zip
+      POTENTIAL_ASSETS['magisk']="${DEVICE_ID}-${OTA_VERSION}-${currentCommit}-magisk-${MAGISK_VERSION}$(createAssetSuffix).zip"
+    else
+      printGreen "SKIP_MAGISK set, not creating upstream magisk OTA"
+    fi
 
     if [[ "$SKIP_PIXINCREATE" != 'true' ]]; then
       # e.g. oriole-2023121200-pixincreate-v30.7-4647f74-dirty.zip

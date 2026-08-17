@@ -372,6 +372,7 @@ This variant can be built as an additional `pixincreate` flavor, next to the reg
 It is disabled by default, so it is never silently forced on existing users. Enable it by setting `SKIP_PIXINCREATE=false`
 (or the `skip-pixincreate` input in `release-single.yaml`). It requires `MAGISK_PREINIT_DEVICE` to be set, just like the regular magisk flavor,
 and it reuses `MAGISK_VERSION`, since the fork uses the same tags as upstream magisk.
+If you only want the `pixincreate` flavor, you can additionally set `SKIP_MAGISK=true`.
 
 The resulting OTAs are published as a separate flavor, so in Custota you would point to the `pixincreate` path of your OTA server, e.g.
 `https://rooted-graphene.github.io/ota/pixincreate`. As with the other flavors, you can switch between them via OTA updates.
