@@ -7,12 +7,14 @@ on:
       - '*'
     paths:
       - rooted-ota.sh
+      - apatch-patch.py
       - tests/**
       - .github/workflows/release-single.yaml
   pull_request:
     types: [synchronize, opened, reopened]
     paths:
       - rooted-ota.sh
+      - apatch-patch.py
       - tests/**
       - .github/workflows/release-single.yaml
 
@@ -30,6 +32,12 @@ on:
         type: string
         default: ''
       apatch-boot-version:
+        type: string
+        default: ''
+      apatch-manager-url:
+        type: string
+        default: ''
+      apatch-manager-sha256:
         type: string
         default: ''
   
@@ -50,6 +58,12 @@ on:
         required: false
       apatch-boot-version:
         description: GrapheneOS version used to build the APatch boot image
+        required: false
+      apatch-manager-url:
+        description: HTTPS URL of the matching signed APatch manager APK
+        required: false
+      apatch-manager-sha256:
+        description: SHA-256 of the APatch manager APK
         required: false
       skip-rootless:
         description: skip building rootless OTA
@@ -110,6 +124,8 @@ jobs:
           echo "APATCH_BOOT_SHA256=$(echo '${{ github.event.inputs.apatch-boot-sha256 || inputs.apatch-boot-sha256 || '' }}' | xargs)" >> $GITHUB_ENV
           echo "APATCH_BOOT_VERSION=$(echo '${{ github.event.inputs.apatch-boot-version || inputs.apatch-boot-version || '' }}' | xargs)" >> $GITHUB_ENV
           echo "APATCH_BOOT_DEVICE=$(echo '${{ github.event.inputs.device-id || inputs.device-id || 'shiba' }}' | xargs)" >> $GITHUB_ENV
+          echo "APATCH_MANAGER_APK=$(echo '${{ github.event.inputs.apatch-manager-url || inputs.apatch-manager-url || '' }}' | xargs)" >> $GITHUB_ENV
+          echo "APATCH_MANAGER_SHA256=$(echo '${{ github.event.inputs.apatch-manager-sha256 || inputs.apatch-manager-sha256 || '' }}' | xargs)" >> $GITHUB_ENV
           echo "FORCE_OTA_SERVER_UPLOAD=$(echo '${{ github.event.inputs.force-ota-server-upload || '' }}' | xargs)" >> $GITHUB_ENV
           echo "FORCE_BUILD=$(echo '${{ github.event.inputs.force-build || '' }}' | xargs)" >> $GITHUB_ENV
           echo "UPLOAD_TEST_OTA=$(echo '${{ github.event.inputs.upload-test-ota || '' }}' | xargs)" >> $GITHUB_ENV
