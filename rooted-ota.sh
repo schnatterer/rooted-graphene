@@ -36,6 +36,15 @@ SKIP_MAGISK=${SKIP_MAGISK:-'false'}
 # Note that modules verifying magisk's signature won't work with this fork.
 # Enable by setting to "false".
 SKIP_PIXINCREATE=${SKIP_PIXINCREATE:-'true'}
+# Build an APatch flavor from an exact-version, prebuilt boot image. The image
+# may be a local path or an HTTPS URL. Remote images require a pinned SHA-256.
+SKIP_APATCH=${SKIP_APATCH:-'false'}
+APATCH_BOOT_IMAGE=${APATCH_BOOT_IMAGE:-}
+APATCH_BOOT_SHA256=${APATCH_BOOT_SHA256:-}
+APATCH_BOOT_DEVICE=${APATCH_BOOT_DEVICE:-}
+APATCH_BOOT_VERSION=${APATCH_BOOT_VERSION:-}
+APATCH_BOOT_FILE=''
+APATCH_BOOT_DIGEST=''
 # https://grapheneos.org/releases#stable-channel
 OTA_VERSION=${OTA_VERSION:-'latest'}
 
@@ -132,6 +141,7 @@ function createRootedOta() {
   [[ "$SKIP_CLEANUP" != 'true' ]] && trap cleanup EXIT ERR
 
   findLatestVersion
+  prepareApatchBootImage
   checkBuildNecessary
   downloadAndroidDependencies
   patchOTAs
@@ -165,6 +175,10 @@ function checkBuildNecessary() {
     fi
   else 
     printGreen "MAGISK_PREINIT_DEVICE not set for device, not creating magisk OTA"
+  fi
+
+  if [[ -n "$APATCH_BOOT_FILE" ]]; then
+    POTENTIAL_ASSETS['apatch']="${DEVICE_ID}-${OTA_VERSION}-${currentCommit}-apatch-${APATCH_BOOT_DIGEST:0:12}$(createAssetSuffix).zip"
   fi
   
   if [[ "$SKIP_ROOTLESS" != 'true' ]]; then
@@ -233,6 +247,67 @@ function checkMandatoryVariable() {
       exit 1
     fi
   done
+}
+
+function prepareApatchBootImage() {
+  APATCH_BOOT_FILE=''
+  APATCH_BOOT_DIGEST=''
+  if [[ "$SKIP_APATCH" == 'true' ]]; then
+    printGreen "SKIP_APATCH set, not creating APatch OTA"
+    return
+  fi
+  if [[ -z "$APATCH_BOOT_IMAGE" ]]; then
+    printGreen "APATCH_BOOT_IMAGE not set, not creating APatch OTA"
+    return
+  fi
+
+  checkMandatoryVariable APATCH_BOOT_DEVICE APATCH_BOOT_VERSION
+  if [[ "$APATCH_BOOT_DEVICE" != "$DEVICE_ID" ]]; then
+    printRed "APatch boot device '$APATCH_BOOT_DEVICE' does not match OTA device '$DEVICE_ID'"
+    exit 1
+  fi
+  if [[ "$APATCH_BOOT_VERSION" != "$OTA_VERSION" ]]; then
+    printRed "APatch boot version '$APATCH_BOOT_VERSION' does not match OTA version '$OTA_VERSION'"
+    exit 1
+  fi
+
+  mkdir -p .tmp
+  APATCH_BOOT_FILE=".tmp/apatch-${DEVICE_ID}-${OTA_VERSION}-boot.img"
+  case "$APATCH_BOOT_IMAGE" in
+    https://*)
+      checkMandatoryVariable APATCH_BOOT_SHA256
+      curl --fail --location --silent --show-error \
+        --output "$APATCH_BOOT_FILE" "$APATCH_BOOT_IMAGE"
+      ;;
+    http://*)
+      printRed "APATCH_BOOT_IMAGE must use HTTPS"
+      exit 1
+      ;;
+    *)
+      if [[ ! -f "$APATCH_BOOT_IMAGE" ]]; then
+        printRed "APatch boot image does not exist: $APATCH_BOOT_IMAGE"
+        exit 1
+      fi
+      cp -- "$APATCH_BOOT_IMAGE" "$APATCH_BOOT_FILE"
+      ;;
+  esac
+
+  if [[ ! -s "$APATCH_BOOT_FILE" ]]; then
+    printRed "APatch boot image is empty: $APATCH_BOOT_FILE"
+    exit 1
+  fi
+  APATCH_BOOT_DIGEST=$(sha256sum "$APATCH_BOOT_FILE" | cut -d ' ' -f 1)
+  if [[ -n "$APATCH_BOOT_SHA256" ]]; then
+    if [[ ! "$APATCH_BOOT_SHA256" =~ ^[[:xdigit:]]{64}$ ]]; then
+      printRed "APATCH_BOOT_SHA256 must contain exactly 64 hexadecimal characters"
+      exit 1
+    fi
+    if [[ "${APATCH_BOOT_DIGEST,,}" != "${APATCH_BOOT_SHA256,,}" ]]; then
+      printRed "APatch boot SHA-256 mismatch: expected $APATCH_BOOT_SHA256, got $APATCH_BOOT_DIGEST"
+      exit 1
+    fi
+  fi
+  printGreen "Using APatch boot image for ${DEVICE_ID} ${OTA_VERSION}: ${APATCH_BOOT_DIGEST}"
 }
 
 function createAssetSuffix() {
@@ -317,6 +392,27 @@ function downloadAndVerifyFromChenxiaolong() {
   fi
 }
 
+function verifyApatchOta() {
+  local otaFile=$1
+  local verifyDir='.tmp/apatch-verify'
+
+  rm -rf "$verifyDir"
+  mkdir -p "$verifyDir"
+  .tmp/avbroot ota extract \
+    --input "$otaFile" \
+    --directory "$verifyDir" \
+    --partition boot
+
+  if ! cmp -s -- "$APATCH_BOOT_FILE" "$verifyDir/boot.img"; then
+    printRed "APatch boot image was not preserved in $otaFile"
+    rm -rf "$verifyDir"
+    return 1
+  fi
+
+  rm -rf "$verifyDir"
+  printGreen "Verified APatch boot image in $otaFile"
+}
+
 function patchOTAs() {
 
   downloadAvBroot
@@ -357,6 +453,16 @@ function patchOTAs() {
         args+=("--patch-arg=--magisk" "--patch-arg" ".tmp/pixincreate-$MAGISK_VERSION.apk")
         args+=("--patch-arg=--magisk-preinit-device" "--patch-arg" "$MAGISK_PREINIT_DEVICE")
       fi
+      if [[ "$flavor" == 'apatch' ]]; then
+        # APatch stores its KernelPatch payload in data that avbroot's
+        # --prepatched repacker normalizes away. Replace boot byte-for-byte.
+        args+=(
+          "--patch-arg=--rootless"
+          "--patch-arg=--replace"
+          "--patch-arg=boot"
+          "--patch-arg" "$APATCH_BOOT_FILE"
+        )
+      fi
 
       # If env vars not set, passphrases will be queried interactively
       if [ -v PASSPHRASE_AVB ]; then
@@ -392,6 +498,10 @@ function patchOTAs() {
 
       printGreen "Finished patching file ${targetFile}"
     fi
+    if [[ "$flavor" == 'apatch' ]]; then
+      verifyApatchOta "$targetFile"
+    fi
+
     
   done
 }

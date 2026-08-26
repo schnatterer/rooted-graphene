@@ -7,16 +7,29 @@ on:
       - '*'
     paths:
       - rooted-ota.sh
+      - tests/**
+      - .github/workflows/release-single.yaml
   pull_request:
     types: [synchronize, opened, reopened]
     paths:
       - rooted-ota.sh
+      - tests/**
+      - .github/workflows/release-single.yaml
 
   workflow_call:
     inputs:
       device-id:
         type: string
       magisk-preinit-device:
+        type: string
+        default: ''
+      apatch-boot-url:
+        type: string
+        default: ''
+      apatch-boot-sha256:
+        type: string
+        default: ''
+      apatch-boot-version:
         type: string
         default: ''
   
@@ -28,6 +41,15 @@ on:
         required: true
       magisk-preinit-device:
         description: Magisk preinit device
+        required: false
+      apatch-boot-url:
+        description: HTTPS URL of the exact-version APatch boot image
+        required: false
+      apatch-boot-sha256:
+        description: SHA-256 of the APatch boot image
+        required: false
+      apatch-boot-version:
+        description: GrapheneOS version used to build the APatch boot image
         required: false
       skip-rootless:
         description: skip building rootless OTA
@@ -84,6 +106,10 @@ jobs:
           
           echo "MAGISK_VERSION=$(echo '${{ github.event.inputs.magisk-version || '' }}' | xargs)" >> $GITHUB_ENV
           echo "OTA_VERSION=$(echo '${{ github.event.inputs.ota-version || '' }}' | xargs)" >> $GITHUB_ENV
+          echo "APATCH_BOOT_IMAGE=$(echo '${{ github.event.inputs.apatch-boot-url || inputs.apatch-boot-url || '' }}' | xargs)" >> $GITHUB_ENV
+          echo "APATCH_BOOT_SHA256=$(echo '${{ github.event.inputs.apatch-boot-sha256 || inputs.apatch-boot-sha256 || '' }}' | xargs)" >> $GITHUB_ENV
+          echo "APATCH_BOOT_VERSION=$(echo '${{ github.event.inputs.apatch-boot-version || inputs.apatch-boot-version || '' }}' | xargs)" >> $GITHUB_ENV
+          echo "APATCH_BOOT_DEVICE=$(echo '${{ github.event.inputs.device-id || inputs.device-id || 'shiba' }}' | xargs)" >> $GITHUB_ENV
           echo "FORCE_OTA_SERVER_UPLOAD=$(echo '${{ github.event.inputs.force-ota-server-upload || '' }}' | xargs)" >> $GITHUB_ENV
           echo "FORCE_BUILD=$(echo '${{ github.event.inputs.force-build || '' }}' | xargs)" >> $GITHUB_ENV
           echo "UPLOAD_TEST_OTA=$(echo '${{ github.event.inputs.upload-test-ota || '' }}' | xargs)" >> $GITHUB_ENV
@@ -104,6 +130,8 @@ jobs:
             echo "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> $GITHUB_ENV
           fi
       - run: sudo apt-get install -y jq curl git
+      - name: Test APatch flavor input validation
+        run: bash tests/apatch-flavor.sh
       - name: Use dummy keys and certs for PRs
         # Neither vars nor secrets are exposed to external PRs. 
         # We still want them to build so generating dummy secrets seems the pragmatic solution 
