@@ -419,7 +419,7 @@ the separate `apatch` flavor. This intentionally does not use avbroot's
 payload. Custota then uses:
 
 ```text
-https://YOUR_GITHUB_PAGES_HOST/apatch
+https://rooted-graphene.github.io/ota/apatch
 ```
 
 The first installation still follows this project's custom-AVB-key procedure
