@@ -77,7 +77,7 @@ OTA_BASE_URL="https://releases.grapheneos.org"
 # renovate: datasource=github-releases packageName=chenxiaolong/avbroot versioning=semver
 AVB_ROOT_VERSION=3.34.1
 # renovate: datasource=github-releases packageName=chenxiaolong/Custota versioning=semver-coerced
-CUSTOTA_VERSION=6.4
+CUSTOTA_VERSION=6.5
 # renovate: datasource=git-refs packageName=https://github.com/chenxiaolong/my-avbroot-setup currentValue=master
 PATCH_PY_COMMIT=9161b3e13416790d7e6da21d9dac5a14bc724504
 # renovate: datasource=docker packageName=python
