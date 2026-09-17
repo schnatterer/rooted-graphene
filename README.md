@@ -365,6 +365,76 @@ Patching kernelsu is much more complex that patching magisk.
 It might even be impossible to run GrapheneOS with it, without building GrapheneOS from scratch.
 Also, some parts of kernelsu seem to be closed source, which feels suspicious and inappropriate for a tool with so much influence on your device.
 
+#### APatch with an exact-source GrapheneOS kernel
+
+An `apatch` flavor can be built from a prebuilt `boot.img` and its matching
+signed APatch manager APK. This repository does not build either artifact: the
+image must already contain the APatch-compatible KernelPatch integration and
+must be built from the exact GrapheneOS source tag for the target OTA. The APK
+must use the signing identity authorized by that KernelPatch build. The script
+rejects an explicitly mismatched device, GrapheneOS version, or SHA-256. It
+replaces the OTA's `boot` partition byte-for-byte, installs the manager at
+`/system/app/APatch/APatch.apk`, and fails the build unless the finished OTA
+contains both supplied artifacts exactly.
+
+For example, with a Pixel 8 image built for GrapheneOS `2026081300`:
+
+```shell
+boot=/path/to/grapheneos-apatch-shiba-2026081300.img
+manager=/path/to/APatch.apk
+boot_sha256=$(sha256sum "$boot" | cut -d ' ' -f 1)
+manager_sha256=$(sha256sum "$manager" | cut -d ' ' -f 1)
+
+export PASSPHRASE_AVB='your AVB key passphrase'
+export PASSPHRASE_OTA='your OTA key passphrase'
+
+DEVICE_ID=shiba \
+OTA_VERSION=2026081300 \
+APATCH_BOOT_IMAGE="$boot" \
+APATCH_BOOT_SHA256="$boot_sha256" \
+APATCH_BOOT_DEVICE=shiba \
+APATCH_BOOT_VERSION=2026081300 \
+APATCH_MANAGER_APK="$manager" \
+APATCH_MANAGER_SHA256="$manager_sha256" \
+SKIP_MAGISK=true \
+SKIP_PIXINCREATE=true \
+SKIP_ROOTLESS=true \
+bash -c '. rooted-ota.sh && createRootedOta'
+```
+
+`APATCH_BOOT_IMAGE` and `APATCH_MANAGER_APK` accept local paths or HTTPS URLs.
+`APATCH_MANAGER_SHA256` is always mandatory; `APATCH_BOOT_SHA256` is mandatory
+for URLs and recommended for local files. `APATCH_BOOT_DEVICE` and
+`APATCH_BOOT_VERSION` are always mandatory. Keeping `OTA_VERSION` explicit is
+recommended: an APatch image for one GrapheneOS release must never be reused
+for another.
+
+For GitHub Actions, run `release-single.yaml` with `apatch-boot-url`,
+`apatch-boot-sha256`, `apatch-boot-version`, `apatch-manager-url`, and
+`apatch-manager-sha256`. The runner downloads both artifacts, adds the boot
+image as a lossless partition replacement, injects the APK as a regular system
+app, verifies the signed OTA contains both exact artifacts, and publishes it as
+the separate `apatch` flavor. This intentionally does not use avbroot's
+`--prepatched` repacker because it does not preserve APatch's KernelPatch
+payload. Custota then uses:
+
+```text
+https://rooted-graphene.github.io/ota/apatch
+```
+
+The first installation still follows this project's custom-AVB-key procedure
+and wipes user data when the bootloader is locked. The matching APatch manager
+is already available after that wipe as a regular system app; install
+AndroidPatch userspace from the manager and grant only the required apps.
+A same-package manager update installed in `/data/app` takes precedence over
+the system copy when it uses the same signing identity. Later `apatch` OTAs
+retain `/data/adb`; switching to a `rootless` OTA makes that state dormant, and
+switching back restores APatch.
+
+The APatch manager may show `0.13.5 -> 0.13.5` because it compares build
+timestamps. Do not use its generic KernelPatch update action for this flavor;
+kernel updates must come from a new exact-version `apatch` OTA.
+
 Another alternative might be to use a version of magisk (like [the one maintained by pixincreate](https://github.com/pixincreate/Magisk)) that contains patches to make zygisk work.  
 This still has some limitations, like [certain modules checking for magisk's signature won't work](https://github.com/schnatterer/rooted-graphene/commit/da0cd817c2665798df46df1aeb7caef9d98b79d0#r141746606).
 
