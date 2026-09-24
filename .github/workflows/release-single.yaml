@@ -19,6 +19,16 @@ on:
       magisk-preinit-device:
         type: string
         default: ''
+      skip-pixincreate:
+        description: skip building OTA rooted with pixincreate's magisk fork
+        type: boolean
+        default: true
+      pixincreate-version:
+        type: string
+        default: ''
+      pixincreate-apk-name:
+        type: string
+        default: ''
   
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
@@ -64,6 +74,12 @@ on:
       magisk-version:
         description: Magisk version
         required: false
+      pixincreate-version:
+        description: Pixincreate Magisk version
+        required: false
+      pixincreate-apk-name:
+        description: Pixincreate Magisk APK file name
+        required: false
 jobs:
   build-device:
     runs-on: ubuntu-latest
@@ -76,6 +92,10 @@ jobs:
       - name: Set inputs
         # Empty means, use version defined in rooted-ota.sh
         # Note the difference between github.event.inputs (workflow_dispatch) and inputs (workflow_call)
+        env:
+          PIXINCREATE_VERSION_INPUT: ${{ inputs.pixincreate-version || '' }}
+          PIXINCREATE_APK_NAME_INPUT: ${{ inputs.pixincreate-apk-name || '' }}
+          SKIP_PIXINCREATE_INPUT: ${{ toJSON(inputs.skip-pixincreate) == 'false' && 'false' || 'true' }}
         run: |
           echo "DEVICE_ID=$(echo '${{ github.event.inputs.device-id || inputs.device-id || 'shiba' }}' | xargs)" >> $GITHUB_ENV
           if [[ "${{ github.event.inputs.skip-rooted }}" != "true" ]]; then
@@ -83,6 +103,8 @@ jobs:
           fi
           
           echo "MAGISK_VERSION=$(echo '${{ github.event.inputs.magisk-version || '' }}' | xargs)" >> $GITHUB_ENV
+          echo "PIXINCREATE_VERSION=$PIXINCREATE_VERSION_INPUT" >> $GITHUB_ENV
+          echo "PIXINCREATE_APK_NAME=$PIXINCREATE_APK_NAME_INPUT" >> $GITHUB_ENV
           echo "OTA_VERSION=$(echo '${{ github.event.inputs.ota-version || '' }}' | xargs)" >> $GITHUB_ENV
           echo "FORCE_OTA_SERVER_UPLOAD=$(echo '${{ github.event.inputs.force-ota-server-upload || '' }}' | xargs)" >> $GITHUB_ENV
           echo "FORCE_BUILD=$(echo '${{ github.event.inputs.force-build || '' }}' | xargs)" >> $GITHUB_ENV
@@ -90,7 +112,7 @@ jobs:
           echo "SKIP_ROOTLESS=$(echo '${{ github.event.inputs.skip-rootless || '' }}' | xargs)" >> $GITHUB_ENV
           # Note the explicit 'true' fallback: an empty value would enable the flavor,
           # because the script only skips on the literal string "true"
-          echo "SKIP_PIXINCREATE=$(echo '${{ github.event.inputs.skip-pixincreate || 'true' }}' | xargs)" >> $GITHUB_ENV
+          echo "SKIP_PIXINCREATE=$SKIP_PIXINCREATE_INPUT" >> $GITHUB_ENV
           echo "SKIP_RELEASE=$(echo '${{ github.event.inputs.skip-release || '' }}' | xargs)" >> $GITHUB_ENV
           
           if [[ "${{ github.event_name }}" == "push" ]]  || [[ "${{ github.event_name }}" == "pull_request" ]]; then

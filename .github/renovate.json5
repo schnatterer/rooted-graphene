@@ -17,6 +17,11 @@
       matchUpdateTypes: ["minor", "patch" ],
       automerge: true,
     },
+    {
+      matchPackageNames: ["pixincreate/Magisk"],
+      description: "Do not automatically merge Pixincreate Magisk updates because the fork needs device testing",
+      automerge: false,
+    },
   ],
   customManagers: [
     {

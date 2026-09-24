@@ -46,6 +46,12 @@ OTA_VERSION=${OTA_VERSION:-'latest'}
 # renovate: datasource=github-releases packageName=topjohnwu/Magisk versioning=semver-coerced
 DEFAULT_MAGISK_VERSION=v30.7
 MAGISK_VERSION=${MAGISK_VERSION:-${DEFAULT_MAGISK_VERSION}}
+# Pixincreate's fork can publish different versions and APK names than upstream Magisk.
+# renovate: datasource=github-releases packageName=pixincreate/Magisk versioning=loose
+DEFAULT_PIXINCREATE_VERSION=v30.7
+PIXINCREATE_VERSION=${PIXINCREATE_VERSION:-${DEFAULT_PIXINCREATE_VERSION}}
+PIXINCREATE_APK_NAME=${PIXINCREATE_APK_NAME:-''}
+PIXINCREATE_APK_PATH=''
 
 SKIP_CLEANUP=${SKIP_CLEANUP:-''}
 
@@ -158,8 +164,15 @@ function checkBuildNecessary() {
     fi
 
     if [[ "$SKIP_PIXINCREATE" != 'true' ]]; then
-      # e.g. oriole-2023121200-pixincreate-v30.7-4647f74-dirty.zip
-      POTENTIAL_ASSETS['pixincreate']="${DEVICE_ID}-${OTA_VERSION}-${currentCommit}-pixincreate-${MAGISK_VERSION}$(createAssetSuffix).zip"
+      resolvePixincreateApk
+      local pixincreateAssetVersion="$PIXINCREATE_VERSION"
+      local defaultApkName
+      defaultApkName=$(defaultPixincreateApkName)
+      if [[ "$PIXINCREATE_APK_NAME" != "$defaultApkName" ]]; then
+        pixincreateAssetVersion+="-$(sanitizeFilenamePart "$PIXINCREATE_APK_NAME")"
+      fi
+      # e.g. oriole-2023121200-pixincreate-v31.0-3-4647f74-dirty.zip
+      POTENTIAL_ASSETS['pixincreate']="${DEVICE_ID}-${OTA_VERSION}-${currentCommit}-pixincreate-${pixincreateAssetVersion}$(createAssetSuffix).zip"
     else
       printGreen "SKIP_PIXINCREATE set, not creating pixincreate OTA"
     fi
@@ -257,9 +270,9 @@ function downloadAndroidDependencies() {
     curl --fail -sLo ".tmp/magisk-$MAGISK_VERSION.apk" "https://github.com/topjohnwu/Magisk/releases/download/$MAGISK_VERSION/Magisk-$MAGISK_VERSION.apk"
   fi
 
-  # pixincreate's fork releases its APK as "app-release.apk" and uses the same tags as upstream magisk
-  if ! ls ".tmp/pixincreate-$MAGISK_VERSION.apk" >/dev/null 2>&1 && [[ "${POTENTIAL_ASSETS['pixincreate']+isset}" ]]; then
-    curl --fail -sLo ".tmp/pixincreate-$MAGISK_VERSION.apk" "https://github.com/pixincreate/Magisk/releases/download/$MAGISK_VERSION/app-release.apk"
+  if [[ "${POTENTIAL_ASSETS['pixincreate']+isset}" ]]; then
+    checkMandatoryVariable 'PIXINCREATE_VERSION'
+    downloadPixincreateApk
   fi
 
   if ! ls ".tmp/$OTA_TARGET.zip" >/dev/null 2>&1; then
@@ -275,6 +288,13 @@ function findLatestVersion() {
   fi
   print "Magisk version: $MAGISK_VERSION"
 
+  if [[ -n "$MAGISK_PREINIT_DEVICE" && "$SKIP_PIXINCREATE" != 'true' ]]; then
+    if [[ "$PIXINCREATE_VERSION" == 'latest' ]]; then
+      PIXINCREATE_VERSION=$(curl --fail -sL -I -o /dev/null -w '%{url_effective}' https://github.com/pixincreate/Magisk/releases/latest | sed 's/.*\/tag\///;')
+    fi
+    print "Pixincreate version: $PIXINCREATE_VERSION"
+  fi
+
   # Search for a new version grapheneos.
   # e.g. https://releases.grapheneos.org/shiba-stable
 
@@ -286,6 +306,57 @@ function findLatestVersion() {
   OTA_URL="$OTA_BASE_URL/$OTA_TARGET.zip"
   # e.g.  shiba-ota_update-2023121200
   print "OTA target: $OTA_TARGET; OTA URL: $OTA_URL"
+}
+
+function downloadPixincreateApk() {
+  resolvePixincreateApk
+  local targetFile="$PIXINCREATE_APK_PATH"
+  local downloadFile="$targetFile.download"
+
+  if ls "$targetFile" >/dev/null 2>&1; then
+    return
+  fi
+
+  rm -f "$downloadFile"
+  curl --fail -sLo "$downloadFile" "https://github.com/pixincreate/Magisk/releases/download/$PIXINCREATE_VERSION/$PIXINCREATE_APK_NAME"
+  mv "$downloadFile" "$targetFile"
+}
+
+function resolvePixincreateApk() {
+  resolvePixincreateApkName
+  PIXINCREATE_APK_PATH=".tmp/pixincreate-$PIXINCREATE_VERSION-$PIXINCREATE_APK_NAME"
+}
+
+function resolvePixincreateApkName() {
+  if [[ -n "$PIXINCREATE_APK_NAME" ]]; then
+    validatePixincreateApkName
+    return
+  fi
+
+  PIXINCREATE_APK_NAME=$(defaultPixincreateApkName)
+  validatePixincreateApkName
+}
+
+function defaultPixincreateApkName() {
+  # The current default v30.7 uses app-release.apk.
+  if [[ "$PIXINCREATE_VERSION" == 'v30.7' ]]; then
+    echo 'app-release.apk'
+    return
+  fi
+
+  # Newer Pixincreate releases use names like Magisk-v31.0-3.apk.
+  echo "Magisk-$PIXINCREATE_VERSION.apk"
+}
+
+function validatePixincreateApkName() {
+  if [[ "$PIXINCREATE_APK_NAME" == */* ]]; then
+    printRed "PIXINCREATE_APK_NAME must be a release asset file name, not a path: $PIXINCREATE_APK_NAME"
+    exit 1
+  fi
+}
+
+function sanitizeFilenamePart() {
+  printf '%s' "$1" | tr -c 'A-Za-z0-9._-' '_'
 }
 
 function downloadAvBroot() {
@@ -354,7 +425,8 @@ function patchOTAs() {
         args+=("--patch-arg=--magisk-preinit-device" "--patch-arg" "$MAGISK_PREINIT_DEVICE")
       fi
       if [[ "$flavor" == 'pixincreate' ]]; then
-        args+=("--patch-arg=--magisk" "--patch-arg" ".tmp/pixincreate-$MAGISK_VERSION.apk")
+        resolvePixincreateApk
+        args+=("--patch-arg=--magisk" "--patch-arg" "$PIXINCREATE_APK_PATH")
         args+=("--patch-arg=--magisk-preinit-device" "--patch-arg" "$MAGISK_PREINIT_DEVICE")
       fi
 

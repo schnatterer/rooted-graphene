@@ -371,7 +371,8 @@ This still has some limitations, like [certain modules checking for magisk's sig
 This variant can be built as an additional `pixincreate` flavor, next to the regular `magisk` and `rootless` ones.  
 It is disabled by default, so it is never silently forced on existing users. Enable it by setting `SKIP_PIXINCREATE=false`
 (or the `skip-pixincreate` input in `release-single.yaml`). It requires `MAGISK_PREINIT_DEVICE` to be set, just like the regular magisk flavor,
-and it reuses `MAGISK_VERSION`, since the fork uses the same tags as upstream magisk.
+and uses `PIXINCREATE_VERSION`, independent from the regular `MAGISK_VERSION` used by upstream Magisk.
+By default, the current `v30.7` uses the legacy `app-release.apk` asset name, while newer releases use `Magisk-$PIXINCREATE_VERSION.apk`; set `PIXINCREATE_APK_NAME` to force a specific asset name.
 If you only want the `pixincreate` flavor, you can additionally set `SKIP_MAGISK=true`.
 
 The resulting OTAs are published as a separate flavor, so in Custota you would point to the `pixincreate` path of your OTA server, e.g.
