@@ -7,10 +7,16 @@ on:
       - '*'
     paths:
       - rooted-ota.sh
+      - flavors/**
+      - tests/**
+      - .github/workflows/release-single.yaml
   pull_request:
     types: [synchronize, opened, reopened]
     paths:
       - rooted-ota.sh
+      - flavors/**
+      - tests/**
+      - .github/workflows/release-single.yaml
 
   workflow_call:
     inputs:
@@ -19,6 +25,16 @@ on:
       magisk-preinit-device:
         type: string
         default: ''
+      magisk-version:
+        type: string
+      pixincreate-version:
+        type: string
+      skip-pixincreate:
+        type: boolean
+        default: true
+      skip-apatch:
+        type: boolean
+        default: true
   
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
@@ -29,6 +45,10 @@ on:
       magisk-preinit-device:
         description: Magisk preinit device
         required: false
+      skip-apatch:
+        description: Skip building the APatch OTA
+        type: boolean
+        default: true
       skip-rootless:
         description: skip building rootless OTA
         type: boolean
@@ -64,6 +84,9 @@ on:
       magisk-version:
         description: Magisk version
         required: false
+      pixincreate-version:
+        description: pixincreate release tag or latest
+        required: false
 jobs:
   build-device:
     runs-on: ubuntu-latest
@@ -74,7 +97,7 @@ jobs:
           # Allow for switching to github-pages branch
           fetch-depth: 0
       - name: Set inputs
-        # Empty means, use version defined in rooted-ota.sh
+        # Empty inputs use the defaults from the script and flavor plugins.
         # Note the difference between github.event.inputs (workflow_dispatch) and inputs (workflow_call)
         run: |
           echo "DEVICE_ID=$(echo '${{ github.event.inputs.device-id || inputs.device-id || 'shiba' }}' | xargs)" >> $GITHUB_ENV
@@ -82,28 +105,31 @@ jobs:
             echo "MAGISK_PREINIT_DEVICE=$(echo '${{ github.event.inputs.magisk-preinit-device || inputs.magisk-preinit-device || 'sda10' }}' | xargs)" >> $GITHUB_ENV
           fi
           
-          echo "MAGISK_VERSION=$(echo '${{ github.event.inputs.magisk-version || '' }}' | xargs)" >> $GITHUB_ENV
+          echo "MAGISK_VERSION=$(echo '${{ inputs.magisk-version || '' }}' | xargs)" >> $GITHUB_ENV
+          echo "PIXINCREATE_VERSION=$(echo '${{ inputs.pixincreate-version || '' }}' | xargs)" >> $GITHUB_ENV
           echo "OTA_VERSION=$(echo '${{ github.event.inputs.ota-version || '' }}' | xargs)" >> $GITHUB_ENV
+          echo "SKIP_APATCH=${{ toJSON(inputs.skip-apatch) == 'false' && 'false' || 'true' }}" >> $GITHUB_ENV
           echo "FORCE_OTA_SERVER_UPLOAD=$(echo '${{ github.event.inputs.force-ota-server-upload || '' }}' | xargs)" >> $GITHUB_ENV
           echo "FORCE_BUILD=$(echo '${{ github.event.inputs.force-build || '' }}' | xargs)" >> $GITHUB_ENV
           echo "UPLOAD_TEST_OTA=$(echo '${{ github.event.inputs.upload-test-ota || '' }}' | xargs)" >> $GITHUB_ENV
           echo "SKIP_ROOTLESS=$(echo '${{ github.event.inputs.skip-rootless || '' }}' | xargs)" >> $GITHUB_ENV
-          # Note the explicit 'true' fallback: an empty value would enable the flavor,
-          # because the script only skips on the literal string "true"
-          echo "SKIP_PIXINCREATE=$(echo '${{ github.event.inputs.skip-pixincreate || 'true' }}' | xargs)" >> $GITHUB_ENV
+          echo "SKIP_PIXINCREATE=${{ toJSON(inputs.skip-pixincreate) == 'false' && 'false' || 'true' }}" >> $GITHUB_ENV
           echo "SKIP_RELEASE=$(echo '${{ github.event.inputs.skip-release || '' }}' | xargs)" >> $GITHUB_ENV
           
           if [[ "${{ github.event_name }}" == "push" ]]  || [[ "${{ github.event_name }}" == "pull_request" ]]; then
             echo "Running on push: Simple build without release for device $DEVICE_ID"
             echo "FORCE_BUILD=true" >> $GITHUB_ENV
             echo "SKIP_RELEASE=true" >> $GITHUB_ENV
-            # Make sure the pixincreate flavor keeps building
+            # Make sure the opt-in pixincreate and APatch flavors keep building
             echo "SKIP_PIXINCREATE=false" >> $GITHUB_ENV
+            echo "SKIP_APATCH=false" >> $GITHUB_ENV
             echo "GITHUB_TOKEN=must-be-set-but-is-not-used" >> $GITHUB_ENV
           else
             echo "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> $GITHUB_ENV
           fi
-      - run: sudo apt-get install -y jq curl git
+      - run: sudo apt-get install -y jq curl git bats
+      - name: Test flavor behavior
+        run: bats tests
       - name: Use dummy keys and certs for PRs
         # Neither vars nor secrets are exposed to external PRs. 
         # We still want them to build so generating dummy secrets seems the pragmatic solution 
