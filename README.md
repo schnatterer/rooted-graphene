@@ -365,14 +365,32 @@ Patching kernelsu is much more complex that patching magisk.
 It might even be impossible to run GrapheneOS with it, without building GrapheneOS from scratch.
 Also, some parts of kernelsu seem to be closed source, which feels suspicious and inappropriate for a tool with so much influence on your device.
 
+#### APatch from a stock GrapheneOS OTA
+
+Enable APatch with `SKIP_APATCH=false`, or uncheck `skip-apatch` in GitHub Actions.
+The [plugin](flavors/apatch.sh) downloads KernelPatch binaries from
+`xeropresence/KernelPatch` and patches the OTA's stock `boot.img`.
+
+Install the APatch Manager yourself as a regular app, then its AndroidPatch
+userspace. KernelPatch only trusts a Manager under `/data/app` that is signed
+with APK Signature Scheme v2 alone, such as APatch CI build 11278; the official
+11224 release also carries a v3 signature and is rejected. Update the kernel
+through `apatch` OTAs and use the `apatch` path on your Custota server.
+
+The existing [installation and custom-key procedure](#initial-installation-of-os)
+still applies. For older SuperKey installations, review
+[upstream's upgrade notice](https://apatch.dev/apm-guide.html).
+
 Another alternative might be to use a version of magisk (like [the one maintained by pixincreate](https://github.com/pixincreate/Magisk)) that contains patches to make zygisk work.  
 This still has some limitations, like [certain modules checking for magisk's signature won't work](https://github.com/schnatterer/rooted-graphene/commit/da0cd817c2665798df46df1aeb7caef9d98b79d0#r141746606).
 
-This variant can be built as an additional `pixincreate` flavor, next to the regular `magisk` and `rootless` ones.  
-It is disabled by default, so it is never silently forced on existing users. Enable it by setting `SKIP_PIXINCREATE=false`
-(or the `skip-pixincreate` input in `release-single.yaml`). It requires `MAGISK_PREINIT_DEVICE` to be set, just like the regular magisk flavor,
-and it reuses `MAGISK_VERSION`, since the fork uses the same tags as upstream magisk.
-If you only want the `pixincreate` flavor, you can additionally set `SKIP_MAGISK=true`.
+The [`pixincreate` flavor](flavors/pixincreate.sh) is disabled by default. Enable
+it with `SKIP_PIXINCREATE=false` (or the `skip-pixincreate` workflow input).
+Both it and the [`magisk` flavor](flavors/magisk.sh) require
+`MAGISK_PREINIT_DEVICE`. Set `PIXINCREATE_VERSION` (or `pixincreate-version` in
+Actions) to a fork release tag or `latest`; `MAGISK_VERSION` only controls upstream Magisk.
+Magisk is enabled when a preinit device is configured; `SKIP_MAGISK=true`
+disables it independently.
 
 The resulting OTAs are published as a separate flavor, so in Custota you would point to the `pixincreate` path of your OTA server, e.g.
 `https://rooted-graphene.github.io/ota/pixincreate`. As with the other flavors, you can switch between them via OTA updates.
@@ -384,6 +402,35 @@ In general, using [magisk and especially zygisk with Graphene seems to have the 
 It's good to have the rootless version as a fallback!
 
 ## Development
+
+### Flavor hooks
+
+`rooted-ota.sh` owns OTA discovery, shared dependencies, signing, and publication.
+It sources `flavors/*.sh` (override the directory with `FLAVOR_DIR`). A module
+defines `flavor_<filename>_<hook>` functions and keeps its own variables there.
+[APatch](flavors/apatch.sh), [Magisk](flavors/magisk.sh), and
+[pixincreate](flavors/pixincreate.sh) are plugins; rootless remains built in.
+The Magisk flavors share `MAGISK_PREINIT_DEVICE` but keep separate version
+settings and release lookups in their plugins.
+
+| Hook | Contract |
+| --- | --- |
+| `enabled` | Required. Return 0 to enable, 1 to skip, greater than 1 for a configuration error. |
+| `asset_infix` | Required. Print the flavor-specific release-name component. |
+| `prepare` | Resolve inputs before checking whether a release already exists. |
+| `build` | Build artifacts once the OTA, avbroot, and signing keys are available. |
+| `patch_args ARRAY` | Append individual `patch.py` arguments to the named Bash array using `local -n`. |
+| `verify OTA` | Validate the completed or cached OTA. |
+
+Missing optional hooks are no-ops. All hooks except `enabled` must return
+nonzero on failure; failures abort the relevant build/release phase. Array
+outputs preserve argument boundaries and do not mix logs with returned data.
+
+Run the behavior checks with `bats tests`. Real KernelPatch/OTA integration
+requires an actual device-matching boot image and OTA; the small fixtures in
+the Bats suite do not replace signature verification or a device boot test.
+Shell and Bats scripts use LF line endings, enforced by `.gitattributes`.
+
 ```bash
 # DEBUG some parts of the script interactively
 DEBUG=1 bash --init-file rooted-ota.sh
@@ -408,7 +455,7 @@ RELEASE_ID='' \
 GITHUB_REPO=schnatterer/rooted-graphene \
 DEVICE_ID=oriole \
 MAGISK_PREINIT_DEVICE=metadata \
-  bash -c '. rooted-ota.sh && findLatestVersion && checkBuildNecessary && createOtaServerData && uploadOtaServerData'
+  bash -c '. rooted-ota.sh && loadFlavorPlugins && findLatestVersion && prepareFlavorPlugins && checkBuildNecessary && createOtaServerData && uploadOtaServerData'
 
 
 # e2e test

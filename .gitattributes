@@ -1,0 +1,2 @@
+*.sh text eol=lf
+*.bats text eol=lf
