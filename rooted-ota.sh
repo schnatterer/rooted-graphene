@@ -24,28 +24,13 @@ GITHUB_TOKEN=${GITHUB_TOKEN:-''}
 GITHUB_REPO=${GITHUB_REPO:-''}
 
 # Optional
-# If you want an OTA patched with magisk, set the preinit for your device
-MAGISK_PREINIT_DEVICE=${MAGISK_PREINIT_DEVICE:-}
 # Skip creation of rootless OTA by setting to "true"
 SKIP_ROOTLESS=${SKIP_ROOTLESS:-'false'}
-# Skip creation of magisk OTA by setting to "true".
-SKIP_MAGISK=${SKIP_MAGISK:-'false'}
-# In addition to upstream magisk, an OTA can be patched with pixincreate's magisk fork,
-# which contains patches that make zygisk work on GrapheneOS.
-# https://github.com/pixincreate/Magisk
-# Note that modules verifying magisk's signature won't work with this fork.
-# Enable by setting to "false".
-SKIP_PIXINCREATE=${SKIP_PIXINCREATE:-'true'}
+# Flavor plugins are sourced from this directory, e.g. flavors/apatch.sh.
+# See "Flavor plugins" below for the hook contract.
+FLAVOR_DIR=${FLAVOR_DIR:-"$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/flavors"}
 # https://grapheneos.org/releases#stable-channel
 OTA_VERSION=${OTA_VERSION:-'latest'}
-
-# It's recommended to pin magisk version in combination with AVB_ROOT_VERSION.
-# Breaking changes in magisk might need to be adapted in new avbroot version
-# Find latest magisk version here: https://github.com/topjohnwu/Magisk/releases, or:
-# curl --fail -sL -I -o /dev/null -w '%{url_effective}' https://github.com/topjohnwu/Magisk/releases/latest | sed 's/.*\/tag\///;'
-# renovate: datasource=github-releases packageName=topjohnwu/Magisk versioning=semver-coerced
-DEFAULT_MAGISK_VERSION=v30.7
-MAGISK_VERSION=${MAGISK_VERSION:-${DEFAULT_MAGISK_VERSION}}
 
 SKIP_CLEANUP=${SKIP_CLEANUP:-''}
 
@@ -93,6 +78,83 @@ GIT_PUSH_RETRIES=10
 set -o nounset -o pipefail -o errexit
 
 declare -A POTENTIAL_ASSETS
+declare -a FLAVOR_PLUGINS=()
+declare -a FLAVOR_PLUGINS_ENABLED=()
+
+# Flavor plugins
+#
+# A flavor plugin is a shell file in $FLAVOR_DIR that implements hooks named
+# flavor_<name>_<hook>. "enabled" and "asset_infix" are required.
+#
+#   enabled          Return 0 to build, 1 to skip, >1 for invalid configuration
+#   asset_infix      Echo the flavor part of the release asset name
+#   prepare          Resolve inputs; runs before the existing-release check
+#   build            Create artifacts; runs once the OTA and avbroot are present
+#   patch_args <array>     Append patch.py arguments to the named Bash array
+#   verify <ota>           Verify the finished OTA; non-zero fails the build
+# Hooks must return non-zero on failure. Array outputs keep logs out of data and
+# avoid process substitutions silently swallowing hook failures.
+function loadFlavorPlugins() {
+  local plugin name hook
+  FLAVOR_PLUGINS=()
+
+  [[ -d "$FLAVOR_DIR" ]] || return 0
+
+  for plugin in "$FLAVOR_DIR"/*.sh; do
+    [[ -f "$plugin" ]] || continue
+    name=$(basename "$plugin" .sh)
+    # shellcheck disable=SC1090
+    source "$plugin" || return
+    for hook in enabled asset_infix; do
+      if ! flavorHookExists "$name" "$hook"; then
+        printRed "Flavor $name is missing required hook $hook"
+        return 1
+      fi
+    done
+    FLAVOR_PLUGINS+=("$name")
+  done
+}
+
+function flavorHookExists() {
+  declare -F "flavor_$1_$2" >/dev/null
+}
+
+function flavorHook() {
+  local flavor="$1" hook="$2"
+  shift 2
+
+  flavorHookExists "$flavor" "$hook" || return 0
+  "flavor_${flavor}_${hook}" "$@"
+}
+
+function prepareFlavorPlugins() {
+  local flavor status
+  FLAVOR_PLUGINS_ENABLED=()
+
+  [[ "${#FLAVOR_PLUGINS[@]}" -gt 0 ]] || return 0
+
+  for flavor in "${FLAVOR_PLUGINS[@]}"; do
+    if flavorHook "$flavor" enabled; then
+      FLAVOR_PLUGINS_ENABLED+=("$flavor")
+    else
+      status=$?
+      [[ "$status" -eq 1 ]] && continue
+      return "$status"
+    fi
+    flavorHook "$flavor" prepare || return
+  done
+}
+
+function buildFlavorPlugins() {
+  local flavor
+
+  [[ "${#FLAVOR_PLUGINS_ENABLED[@]}" -gt 0 ]] || return 0
+
+  for flavor in "${FLAVOR_PLUGINS_ENABLED[@]}"; do
+    [[ "${POTENTIAL_ASSETS[$flavor]+isset}" ]] || continue
+    flavorHook "$flavor" build || return
+  done
+}
 
 function generateKeys() {
   downloadAvBroot
@@ -131,8 +193,10 @@ function createAndReleaseRootedOta() {
 function createRootedOta() {
   [[ "$SKIP_CLEANUP" != 'true' ]] && trap cleanup EXIT ERR
 
+  loadFlavorPlugins || return
   findLatestVersion
-  checkBuildNecessary
+  prepareFlavorPlugins || return
+  checkBuildNecessary || return
   downloadAndroidDependencies
   patchOTAs
 }
@@ -145,26 +209,15 @@ function cleanup() {
 }
 
 function checkBuildNecessary() {
-  local currentCommit
+  local currentCommit flavor infix
   currentCommit=$(git rev-parse --short HEAD)
   POTENTIAL_ASSETS=()
     
-  if [[ -n "$MAGISK_PREINIT_DEVICE" ]]; then
-    if [[ "$SKIP_MAGISK" != 'true' ]]; then
-      # e.g. oriole-2023121200-magisk-v26.4-4647f74-dirty.zip
-      POTENTIAL_ASSETS['magisk']="${DEVICE_ID}-${OTA_VERSION}-${currentCommit}-magisk-${MAGISK_VERSION}$(createAssetSuffix).zip"
-    else
-      printGreen "SKIP_MAGISK set, not creating upstream magisk OTA"
-    fi
-
-    if [[ "$SKIP_PIXINCREATE" != 'true' ]]; then
-      # e.g. oriole-2023121200-pixincreate-v30.7-4647f74-dirty.zip
-      POTENTIAL_ASSETS['pixincreate']="${DEVICE_ID}-${OTA_VERSION}-${currentCommit}-pixincreate-${MAGISK_VERSION}$(createAssetSuffix).zip"
-    else
-      printGreen "SKIP_PIXINCREATE set, not creating pixincreate OTA"
-    fi
-  else 
-    printGreen "MAGISK_PREINIT_DEVICE not set for device, not creating magisk OTA"
+  if [[ "${#FLAVOR_PLUGINS_ENABLED[@]}" -gt 0 ]]; then
+    for flavor in "${FLAVOR_PLUGINS_ENABLED[@]}"; do
+      infix=$(flavorHook "$flavor" asset_infix) || return
+      POTENTIAL_ASSETS["$flavor"]="${DEVICE_ID}-${OTA_VERSION}-${currentCommit}-${infix}$(createAssetSuffix).zip"
+    done
   fi
   
   if [[ "$SKIP_ROOTLESS" != 'true' ]]; then
@@ -250,18 +303,9 @@ function createAssetSuffix() {
 }
 
 function downloadAndroidDependencies() {
-  checkMandatoryVariable 'MAGISK_VERSION' 'OTA_TARGET'
+  checkMandatoryVariable 'OTA_TARGET'
 
   mkdir -p .tmp
-  if ! ls ".tmp/magisk-$MAGISK_VERSION.apk" >/dev/null 2>&1 && [[ "${POTENTIAL_ASSETS['magisk']+isset}" ]]; then
-    curl --fail -sLo ".tmp/magisk-$MAGISK_VERSION.apk" "https://github.com/topjohnwu/Magisk/releases/download/$MAGISK_VERSION/Magisk-$MAGISK_VERSION.apk"
-  fi
-
-  # pixincreate's fork releases its APK as "app-release.apk" and uses the same tags as upstream magisk
-  if ! ls ".tmp/pixincreate-$MAGISK_VERSION.apk" >/dev/null 2>&1 && [[ "${POTENTIAL_ASSETS['pixincreate']+isset}" ]]; then
-    curl --fail -sLo ".tmp/pixincreate-$MAGISK_VERSION.apk" "https://github.com/pixincreate/Magisk/releases/download/$MAGISK_VERSION/app-release.apk"
-  fi
-
   if ! ls ".tmp/$OTA_TARGET.zip" >/dev/null 2>&1; then
     curl --fail -sLo ".tmp/$OTA_TARGET.zip" "$OTA_URL"
   fi
@@ -269,11 +313,6 @@ function downloadAndroidDependencies() {
 
 function findLatestVersion() {
   checkMandatoryVariable DEVICE_ID
-
-  if [[ "$MAGISK_VERSION" == 'latest' ]]; then
-    MAGISK_VERSION=$(curl --fail -sL -I -o /dev/null -w '%{url_effective}' https://github.com/topjohnwu/Magisk/releases/latest | sed 's/.*\/tag\///;')
-  fi
-  print "Magisk version: $MAGISK_VERSION"
 
   # Search for a new version grapheneos.
   # e.g. https://releases.grapheneos.org/shiba-stable
@@ -335,6 +374,7 @@ function patchOTAs() {
   fi
 
   base642key
+  buildFlavorPlugins || return
 
   for flavor in "${!POTENTIAL_ASSETS[@]}"; do
     local targetFile=".tmp/${POTENTIAL_ASSETS[$flavor]}"
@@ -343,20 +383,14 @@ function patchOTAs() {
       printGreen "File $targetFile already exists locally, not patching."
     else
       local args=()
+      local patchScript=".tmp/my-avbroot-setup/patch.py"
 
       args+=("--output" "$targetFile")
       args+=("--input" ".tmp/$OTA_TARGET.zip")
       args+=("--sign-key-avb" "$KEY_AVB")
       args+=("--sign-key-ota" "$KEY_OTA")
       args+=("--sign-cert-ota" "$CERT_OTA")
-      if [[ "$flavor" == 'magisk' ]]; then
-        args+=("--patch-arg=--magisk" "--patch-arg" ".tmp/magisk-$MAGISK_VERSION.apk")
-        args+=("--patch-arg=--magisk-preinit-device" "--patch-arg" "$MAGISK_PREINIT_DEVICE")
-      fi
-      if [[ "$flavor" == 'pixincreate' ]]; then
-        args+=("--patch-arg=--magisk" "--patch-arg" ".tmp/pixincreate-$MAGISK_VERSION.apk")
-        args+=("--patch-arg=--magisk-preinit-device" "--patch-arg" "$MAGISK_PREINIT_DEVICE")
-      fi
+      flavorHook "$flavor" patch_args args || return
 
       # If env vars not set, passphrases will be queried interactively
       if [ -v PASSPHRASE_AVB ]; then
@@ -383,16 +417,17 @@ function patchOTAs() {
     -w /app \
     -e PATH='/bin:/usr/local/bin:/sbin:/usr/bin:/app/.tmp' \
     --env-file <(env) \
-    python:${PYTHON_VERSION} sh -c "set -e && \
-        apk add --no-cache openssh uv && \
-        uv sync --locked --project .tmp/my-avbroot-setup && \
-        uv run --project .tmp/my-avbroot-setup \
-            .tmp/my-avbroot-setup/patch.py ${args[*]} && \
-        chown -R $(id -u):$(id -g) .tmp"
+    python:${PYTHON_VERSION} sh -c 'set -e
+        apk add --no-cache openssh uv
+        uv sync --locked --project .tmp/my-avbroot-setup
+        owner=$1
+        shift
+        uv run --project .tmp/my-avbroot-setup "$@"
+        chown -R "$owner" .tmp' sh "$(id -u):$(id -g)" "$patchScript" "${args[@]}" || return
 
       printGreen "Finished patching file ${targetFile}"
     fi
-    
+    flavorHook "$flavor" verify "$targetFile" || return
   done
 }
 
@@ -562,7 +597,7 @@ function uploadOtaServerData() {
       
       mkdir -p "${folderPrefix}${flavor}"
       # update only, if current $DEVICE_ID.json does not contain $OTA_VERSION
-      # We don't want to trigger users to upgrade on new commits from this repo or new magisk versions
+      # We don't want to trigger users to upgrade on new commits from this repo or new rooting-tool versions
       # They can manually upgrade by downloading the OTAs from the releases and "adb sideload" them
       if ! grep -q "$OTA_VERSION" "${targetFile}" || [[ "$FORCE_OTA_SERVER_UPLOAD" == 'true' ]] && [[ "$SKIP_OTA_SERVER_UPLOAD" != 'true' ]]; then
         cp "${base_dir}/.tmp/${flavor}/$DEVICE_ID.json" "${targetFile}"
