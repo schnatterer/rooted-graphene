@@ -255,7 +255,10 @@ Once GrapheneOS is installed
 #### Set up OTA updates
 
 * [Disable System Updater app](https://github.com/chenxiaolong/avbroot#ota-updates) (or block its network access) from Settings -> Apps -> See all apps -> (three-dot menu) -> Show system -> (find "System Updater" app).
-* Open Custota app and set the OTA server URL to point to this OTA server: https://rooted-graphene.github.io/ota/magisk
+* Open Custota app and set the OTA server URL to point to this OTA server:
+    * If you used the magisk OTA release : https://rooted-graphene.github.io/ota/magisk
+    * If you used the pixincreate OTA release : https://rooted-graphene.github.io/ota/pixincreate
+    * Else, for the non-root release, use : https://rooted-graphene.github.io/ota/rootless
 
 Alternatively you could do updates manually via `adb sideload`:
 * reboot the device and begin holding the volume down button until it boots up into the bootloader interface
@@ -274,7 +277,7 @@ And then upgrade.
 (if custota should tell you that you're on the latest version, you can force an upgrade by long pressing `Version` and 
 then selecting `Allow reinstall`).
 
-If you want to gain root again, just switch back to this URL in custota: https://rooted-graphene.github.io/ota/magisk/
+If you want to gain root again, just switch back to this URL in custota: https://rooted-graphene.github.io/ota/magisk/ or https://rooted-graphene.github.io/ota/pixincreate (for pixincreate's magisk fork).
 And then upgrade.
 
 ## Magisk preinit strings
