@@ -47,6 +47,12 @@ OTA_VERSION=${OTA_VERSION:-'latest'}
 DEFAULT_MAGISK_VERSION=v30.7
 MAGISK_VERSION=${MAGISK_VERSION:-${DEFAULT_MAGISK_VERSION}}
 
+# Version of pixincreate's magisk fork. Its tags don't always match upstream magisk's, e.g. v31.0-3.
+# Find latest version here: https://github.com/pixincreate/Magisk/releases
+# renovate: datasource=github-releases packageName=pixincreate/Magisk versioning=semver-coerced
+DEFAULT_PIXINCREATE_VERSION=v31.0-3
+PIXINCREATE_VERSION=${PIXINCREATE_VERSION:-${DEFAULT_PIXINCREATE_VERSION}}
+
 SKIP_CLEANUP=${SKIP_CLEANUP:-''}
 
 # For committing to GH pages in different repo, clone it to a different folder and set this var
@@ -158,8 +164,8 @@ function checkBuildNecessary() {
     fi
 
     if [[ "$SKIP_PIXINCREATE" != 'true' ]]; then
-      # e.g. oriole-2023121200-pixincreate-v30.7-4647f74-dirty.zip
-      POTENTIAL_ASSETS['pixincreate']="${DEVICE_ID}-${OTA_VERSION}-${currentCommit}-pixincreate-${MAGISK_VERSION}$(createAssetSuffix).zip"
+      # e.g. oriole-2023121200-pixincreate-v31.0-3-4647f74-dirty.zip
+      POTENTIAL_ASSETS['pixincreate']="${DEVICE_ID}-${OTA_VERSION}-${currentCommit}-pixincreate-${PIXINCREATE_VERSION}$(createAssetSuffix).zip"
     else
       printGreen "SKIP_PIXINCREATE set, not creating pixincreate OTA"
     fi
@@ -257,9 +263,9 @@ function downloadAndroidDependencies() {
     curl --fail -sLo ".tmp/magisk-$MAGISK_VERSION.apk" "https://github.com/topjohnwu/Magisk/releases/download/$MAGISK_VERSION/Magisk-$MAGISK_VERSION.apk"
   fi
 
-  # pixincreate's fork releases its APK as "app-release.apk" and uses the same tags as upstream magisk
-  if ! ls ".tmp/pixincreate-$MAGISK_VERSION.apk" >/dev/null 2>&1 && [[ "${POTENTIAL_ASSETS['pixincreate']+isset}" ]]; then
-    curl --fail -sLo ".tmp/pixincreate-$MAGISK_VERSION.apk" "https://github.com/pixincreate/Magisk/releases/download/$MAGISK_VERSION/app-release.apk"
+  # pixincreate's fork releases its APK as "Magisk-<version>.apk"
+  if ! ls ".tmp/pixincreate-$PIXINCREATE_VERSION.apk" >/dev/null 2>&1 && [[ "${POTENTIAL_ASSETS['pixincreate']+isset}" ]]; then
+    curl --fail -sLo ".tmp/pixincreate-$PIXINCREATE_VERSION.apk" "https://github.com/pixincreate/Magisk/releases/download/$PIXINCREATE_VERSION/Magisk-$PIXINCREATE_VERSION.apk"
   fi
 
   if ! ls ".tmp/$OTA_TARGET.zip" >/dev/null 2>&1; then
@@ -354,7 +360,7 @@ function patchOTAs() {
         args+=("--patch-arg=--magisk-preinit-device" "--patch-arg" "$MAGISK_PREINIT_DEVICE")
       fi
       if [[ "$flavor" == 'pixincreate' ]]; then
-        args+=("--patch-arg=--magisk" "--patch-arg" ".tmp/pixincreate-$MAGISK_VERSION.apk")
+        args+=("--patch-arg=--magisk" "--patch-arg" ".tmp/pixincreate-$PIXINCREATE_VERSION.apk")
         args+=("--patch-arg=--magisk-preinit-device" "--patch-arg" "$MAGISK_PREINIT_DEVICE")
       fi
 
