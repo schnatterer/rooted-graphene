@@ -209,6 +209,16 @@ function cleanup() {
   print "Cleanup complete."
 }
 
+# GET a GitHub API URL, authenticated when GITHUB_TOKEN is set. Anonymous
+# requests share a 60/hour limit per IP, which shared CI runners exhaust.
+function githubApi() {
+  local params=("-H" "Accept: application/vnd.github.v3+json")
+  if [[ -n "${GITHUB_TOKEN}" ]]; then
+    params+=("-H" "Authorization: token ${GITHUB_TOKEN}")
+  fi
+  curl --fail -sSL "${params[@]}" "$1"
+}
+
 function checkBuildNecessary() {
   local currentCommit flavor infix
   currentCommit=$(git rev-parse --short HEAD)
@@ -234,16 +244,8 @@ function checkBuildNecessary() {
 
   print "Potential release: ${OTA_VERSION}"
 
-  local params=()
-  local url="https://api.github.com/repos/${GITHUB_REPO}/releases"
-
-  if [ -n "${GITHUB_TOKEN}" ]; then
-    params+=("-H" "Authorization: token ${GITHUB_TOKEN}")
-  fi
-
-  params+=("-H" "Accept: application/vnd.github.v3+json")
   response=$(
-    curl --fail -sL "${params[@]}" "${url}" |
+    githubApi "https://api.github.com/repos/${GITHUB_REPO}/releases" |
       jq --arg release_tag "${OTA_VERSION}" '.[] | select(.tag_name == $release_tag) | {id, tag_name, name, published_at, assets}'
   )
 

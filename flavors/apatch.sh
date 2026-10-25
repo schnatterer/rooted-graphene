@@ -69,7 +69,7 @@ function flavor_apatch_verify() {
 # be rebuilt in place, so both cached binaries and OTA names depend on its hashes.
 function apatchDownloadKernelPatch() {
   local repo="${KERNELPATCH_OWNER}/KernelPatch" release assets
-  release=$(curl --fail -sSL "https://api.github.com/repos/${repo}/releases/tags/${KERNELPATCH_VERSION}") || return
+  release=$(githubApi "https://api.github.com/repos/${repo}/releases/tags/${KERNELPATCH_VERSION}") || return
   assets=$(jq -er '
     .assets as $assets |
     ["kpimg-android", "kptools-linux"][] as $name |

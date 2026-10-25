@@ -26,7 +26,7 @@ function flavor_pixincreate_prepare() {
   if [[ "$PIXINCREATE_VERSION" == 'latest' ]]; then
     endpoint=latest
   fi
-  release=$(curl --fail -sSL "https://api.github.com/repos/pixincreate/Magisk/releases/${endpoint}") || return
+  release=$(githubApi "https://api.github.com/repos/pixincreate/Magisk/releases/${endpoint}") || return
   asset=$(jq -er '
     .tag_name as $version |
     [.assets[] | select(.state == "uploaded" and
