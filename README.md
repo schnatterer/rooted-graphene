@@ -236,8 +236,9 @@ Once GrapheneOS is installed.
    4. Like the recovery prompt says, use  
       `adb sideload <path to ota zip>`  
        to sideload the OTA
-       ⚠️ ***Read the output on your phone carefully, if you see any mention of `ErrorCode::kPostInstallMountError`, or indeed any mention of an aborted install, please follow the workaround steps mentioned in [this issue](https://github.com/schnatterer/rooted-graphene/issues/338#issue-5698397235).*** ⚠️
-   5. After sideloading, select reboot to bootloader
+      
+       ⚠️ **Read the output on your phone carefully, if you see any mention of `ErrorCode::kPostInstallMountError`, or indeed any mention of an aborted install, please follow the workaround steps mentioned in out [troubleshoot section](#Troubleshoot), or to [this issue](https://github.com/schnatterer/rooted-graphene/issues/338#issue-5698397235) directly.** ⚠️
+   6. After sideloading, select reboot to bootloader
 * If you installed using the web installer (or installed manually without security-preview) start the device and switch to the security-preview version during the startup wizard.  
   Then return to the bootloader (e.g. by using the volume button).  
   See [anouncement](#173-sept-27-2025) and [#202](https://github.com/schnatterer/rooted-graphene/issues/202#issuecomment-3620623595) for details.  
