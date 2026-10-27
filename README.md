@@ -394,7 +394,7 @@ It's good to have the rootless version as a fallback!
 	* Poweroff your phone by holding the powerkey and possibly volume down or up. 
 	* Onced turned off, press and hold the power and volume down buttons until your phone boots into fastboot. If this doesn't work, try with volume down.
 	* Once in fastboot, flash back the [stock Graphene OS](https://grapheneos.org/install/). Do *not* lock the bootloader.
-	* Once the flash is finished, press your phone's power button to boot. If your phone boots up and arrives at the setup screen, you're out of the blue ! Otherwise, create an issue and reach out for help.
+	* Once the flash is finished, press your phone's power button to boot. If your phone boots up and arrives at the setup screen, you're good ! Otherwise, create an issue and reach out for help.
 	* Should you not wish to try again, go back to fastboot, lock the bootloader, and call it a day.
 * Step 02: try again
 	* There are two working known methods to avoid this error :
