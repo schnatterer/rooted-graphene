@@ -129,12 +129,8 @@ Some more details:
 ### Installation
 
 ⚠️ Please be aware that there is always some risk involved when flashing your device.  
-Especially since the first `Device is corrupt. It can't be trusted` messages started appearing in [2025032500](https://github.com/schnatterer/rooted-graphene/issues/89).  
-In relation to this error,
-we heard [multiple](https://github.com/schnatterer/rooted-graphene/issues/96#issuecomment-3123443894) [reports](https://github.com/schnatterer/rooted-graphene/issues/96#issuecomment-3358048965) about hard bricks.  
-The steps listed below should work around this issue, though.
 
-Still, if flashing fails, [**don't switch the slot**](https://github.com/schnatterer/rooted-graphene/issues/96#issuecomment-3128121844).  
+If flashing fails, [**don't switch the slot**](https://github.com/schnatterer/rooted-graphene/issues/96#issuecomment-3128121844).  
 Read through the comments on [this issue](https://github.com/schnatterer/rooted-graphene/issues/96) or reach out for help.  
 In case your device should refuse to boot, [this project](https://github.com/JoshuaDoes/tensor-usbdl/) might be helpful. 
 
@@ -197,7 +193,7 @@ Once GrapheneOS is installed
     avbroot ota extract \
         --input /path/to/ota.zip.patched \
         --directory extracted \
-        --fastboot
+        --all
     ```
 * Set this environment variable to match the extracted folder:
 
@@ -219,6 +215,15 @@ Once GrapheneOS is installed
   ```bash
   fastboot flashall --skip-reboot
   ```
+  after that, without rebooting.
+  ```bat
+  fastboot flash product      extracted/product.img
+  fastboot flash vendor       extracted/vendor.img
+  fastboot flash system_ext   extracted/system_ext.img
+  fastboot flash system_dlkm  extracted/system_dlkm.img
+  fastboot flash vendor_dlkm  extracted/vendor_dlkm.img
+  ```
+  This helps flash any partitions flashall might have missed.
 * Set up the custom AVB public key in the bootloader.
   (If you built your own OTA, use your `avb_pkmd.bin`.)
     ```bash
