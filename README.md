@@ -232,16 +232,6 @@ Once GrapheneOS is installed
     curl -s https://raw.githubusercontent.com/rooted-graphene/ota/refs/heads/main/avb_pkmd.bin > avb_pkmd.bin
     fastboot flash avb_custom_key avb_pkmd.bin
     ```
-* Sideload the OTA  
-  (to avoid `Device is corrupt. It can't be trusted` error)
-   1. Run `fastboot reboot recovery` to get into recovery mode
-   2. You should see an android icon lying down with the text "No command".  
-      Hold the power button and press the volume up button a single time to get into the recovery GUI
-   3. Use volume buttons to navigate to "Apply update from ADB" and select it with the power button
-   4. Like the recovery prompt says, use  
-      `adb sideload <path to ota zip>`  
-       to sideload the OTA
-   5. After sideloading, select reboot to bootloader
 * If you installed using the web installer (or installed manually without security-preview) start the device and switch to the security-preview version during the startup wizard.  
   Then return to the bootloader (e.g. by using the volume button).  
   See [anouncement](#173-sept-27-2025) and [#202](https://github.com/schnatterer/rooted-graphene/issues/202#issuecomment-3620623595) for details.  
