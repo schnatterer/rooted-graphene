@@ -129,12 +129,8 @@ Some more details:
 ### Installation
 
 ⚠️ Please be aware that there is always some risk involved when flashing your device.  
-Especially since the first `Device is corrupt. It can't be trusted` messages started appearing in [2025032500](https://github.com/schnatterer/rooted-graphene/issues/89).  
-In relation to this error,
-we heard [multiple](https://github.com/schnatterer/rooted-graphene/issues/96#issuecomment-3123443894) [reports](https://github.com/schnatterer/rooted-graphene/issues/96#issuecomment-3358048965) about hard bricks.  
-The steps listed below should work around this issue, though.
 
-Still, if flashing fails, [**don't switch the slot**](https://github.com/schnatterer/rooted-graphene/issues/96#issuecomment-3128121844).  
+If flashing fails, [**don't switch the slot**](https://github.com/schnatterer/rooted-graphene/issues/96#issuecomment-3128121844).  
 Read through the comments on [this issue](https://github.com/schnatterer/rooted-graphene/issues/96) or reach out for help.  
 In case your device should refuse to boot, [this project](https://github.com/JoshuaDoes/tensor-usbdl/) might be helpful. 
 
@@ -197,7 +193,7 @@ Once GrapheneOS is installed
     avbroot ota extract \
         --input /path/to/ota.zip.patched \
         --directory extracted \
-        --fastboot
+        --all
     ```
 * Set this environment variable to match the extracted folder:
 
@@ -219,6 +215,15 @@ Once GrapheneOS is installed
   ```bash
   fastboot flashall --skip-reboot
   ```
+  after that, without rebooting.
+  ```bat
+  fastboot flash product      extracted/product.img
+  fastboot flash vendor       extracted/vendor.img
+  fastboot flash system_ext   extracted/system_ext.img
+  fastboot flash system_dlkm  extracted/system_dlkm.img
+  fastboot flash vendor_dlkm  extracted/vendor_dlkm.img
+  ```
+  This helps flash any partitions flashall might have missed.
 * Set up the custom AVB public key in the bootloader.
   (If you built your own OTA, use your `avb_pkmd.bin`.)
     ```bash
@@ -227,16 +232,6 @@ Once GrapheneOS is installed
     curl -s https://raw.githubusercontent.com/rooted-graphene/ota/refs/heads/main/avb_pkmd.bin > avb_pkmd.bin
     fastboot flash avb_custom_key avb_pkmd.bin
     ```
-* Sideload the OTA  
-  (to avoid `Device is corrupt. It can't be trusted` error)
-   1. Run `fastboot reboot recovery` to get into recovery mode
-   2. You should see an android icon lying down with the text "No command".  
-      Hold the power button and press the volume up button a single time to get into the recovery GUI
-   3. Use volume buttons to navigate to "Apply update from ADB" and select it with the power button
-   4. Like the recovery prompt says, use  
-      `adb sideload <path to ota zip>`  
-       to sideload the OTA
-   5. After sideloading, select reboot to bootloader
 * If you installed using the web installer (or installed manually without security-preview) start the device and switch to the security-preview version during the startup wizard.  
   Then return to the bootloader (e.g. by using the volume button).  
   See [anouncement](#173-sept-27-2025) and [#202](https://github.com/schnatterer/rooted-graphene/issues/202#issuecomment-3620623595) for details.  
