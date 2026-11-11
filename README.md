@@ -140,7 +140,7 @@ In case your device should refuse to boot, [this project](https://github.com/Jos
 
 Be careful!
 I only provide this software.
-You are using it at your own risk.
+You are using it at your own risk. You may also wish to read out [troubleshoot section](#troubleshoot)
 
 #### Install GrapheneOS
 
@@ -187,7 +187,7 @@ TLDR:
 
 #### Patch GrapheneOS with OTAs from this image
 
-Once GrapheneOS is installed
+Once GrapheneOS is installed. 
 
 * Download the [OTA from releases](https://github.com/rooted-graphene/ota/releases) with **the same version** (except `00` at the end is `01`, see [security-preview](#173-sept-27-2025)) that you just installed. 
 * Obtain latest `fastboot`
@@ -236,7 +236,9 @@ Once GrapheneOS is installed
    4. Like the recovery prompt says, use  
       `adb sideload <path to ota zip>`  
        to sideload the OTA
-   5. After sideloading, select reboot to bootloader
+      
+       ⚠️ **Read the output on your phone carefully, if you see any mention of `ErrorCode::kPostInstallMountError`, or indeed any mention of an aborted install, do not proceed with the next steps. Rather, please follow the workaround steps mentioned in out [troubleshoot section](#device-is-corrupt-it-cant-be-trusted-message-at-boot), or to [this issue](https://github.com/schnatterer/rooted-graphene/issues/338#issue-5698397235) directly.** ⚠️
+   6. After sideloading, select reboot to bootloader
 * If you installed using the web installer (or installed manually without security-preview) start the device and switch to the security-preview version during the startup wizard.  
   Then return to the bootloader (e.g. by using the volume button).  
   See [anouncement](#173-sept-27-2025) and [#202](https://github.com/schnatterer/rooted-graphene/issues/202#issuecomment-3620623595) for details.  
@@ -386,6 +388,57 @@ Another option [might be](https://github.com/schnatterer/rooted-graphene/pull/73
 In general, using [magisk and especially zygisk with Graphene seems to have the risk of breaking things with every new release](https://github.com/chenxiaolong/avbroot/issues/213#issuecomment-1986637884).  
 It's good to have the rootless version as a fallback!
 
+## Troubleshoot
+####  'Device is corrupt. It can't be trusted' message at boot.
+* Step 01: go back to a usable phone :
+	* There have been multiple occurences of this error. And while it might indicate hard-brick, it can also be easily fixable.
+	* Poweroff your phone by holding the powerkey and possibly volume down or up. 
+	* Onced turned off, press and hold the power and volume down buttons until your phone boots into fastboot. If this doesn't work, try with volume down.
+	* Once in fastboot, flash back the [stock Graphene OS](https://grapheneos.org/install/). Do *not* lock the bootloader.
+	* Once the flash is finished, press your phone's power button to boot. If your phone boots up and arrives at the setup screen, you're good ! Otherwise, create an issue and reach out for help.
+	* Should you not wish to try again, go back to fastboot, lock the bootloader, and call it a day.
+* Step 02: try again
+	* There are two working known methods to avoid this error :
+		1.  Follow the [installation](#Installation) steps with the *rootless* variant, then switch to a rooted image through an OTA update (see the *Switching between root and rootless* section. I would suggest to keep the bootloader unlocked until you are on a working rooted image, and to lock it then. This might be longer, but involves less flashing and workarounds.
+		2.  Follow the [installation](#Installation)  steps until here (included) :
+    ```bash
+    avbroot ota extract \
+        --input /path/to/ota.zip.patched \
+        --directory extracted \
+        --fastboot
+    ```
+		  Then proceed to execute the following commands :
+```
+avbroot ota extract --input <patched-ota.zip> --directory extracted --all
+
+fastboot flashall --skip-reboot
+
+fastboot flash product      extracted/product.img
+fastboot flash vendor       extracted/vendor.img
+fastboot flash system_ext   extracted/system_ext.img
+fastboot flash system_dlkm  extracted/system_dlkm.img
+fastboot flash vendor_dlkm  extracted/vendor_dlkm.img
+
+fastboot reboot bootloader
+fastboot flash avb_custom_key avb_pkmd.bin
+fastboot flash vbmeta extracted/vbmeta.img      # signed, verity ON
+fastboot reboot
+```
+Thanks to @david568303 for this solution.
+
+#### The flash worked, but the Magisk shortcut doesn't work
+* If you are on the pixincreate image :
+	Go [here](https://github.com/pixincreate/Magisk), download the magisk apk matching the version in the image (eg: for `
+blazer-2026102101-e5c001a-pixincreate-v30.7.zip`, download Magisk v30.7).
+* If you are on the magisk image, follow the steps above but from the official [magisk repo](https://github.com/topjohnwu/Magisk)
+
+⚠️Do **not** proceed to install root *from* magisk through direct install. You should rather be welcomed with a « Reboot required to complete setup » type message, and nothing else. Using direct install leads to a « No valid operating system installed » boot error. If you do not see this message, you may want to try and reboot anyway, but you most likely will need to follow the [installation](#Installation) steps again.
+
+#### `No valid operating system installed` boot error
+ * Poweroff your phone by holding the powerkey and possibly volume down or up. 
+	* Onced turned off, press and hold the power and volume down buttons until your phone boots into fastboot. If this doesn't work, try with volume down.
+	* You now need to flash the OS again. I have only ever tried to flash bavk Graphene OS and then root. Perhaps reflashing the rooted files works just as well, but I do not know.
+	
 ## Development
 ```bash
 # DEBUG some parts of the script interactively
