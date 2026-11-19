@@ -3,7 +3,7 @@
 
 MAGISK_PREINIT_DEVICE=${MAGISK_PREINIT_DEVICE:-}
 # renovate: datasource=github-releases packageName=topjohnwu/Magisk versioning=semver-coerced
-DEFAULT_MAGISK_VERSION=v30.7
+DEFAULT_MAGISK_VERSION=v31.1
 MAGISK_VERSION=${MAGISK_VERSION:-${DEFAULT_MAGISK_VERSION}}
 
 SKIP_MAGISK=${SKIP_MAGISK:-'false'}
