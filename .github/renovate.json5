@@ -21,7 +21,7 @@
   customManagers: [
     {
       customType: "regex",
-      fileMatch: ["rooted-ota.sh"],
+      fileMatch: ["rooted-ota.sh", "^flavors/.*\\.sh$"],
       matchStrings: [
         // Match lines like these:
         // # renovate: datasource=github-releases packageName=chenxiaolong/avbroot versioning=semver
